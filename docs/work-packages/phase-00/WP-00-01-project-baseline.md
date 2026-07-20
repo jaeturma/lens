@@ -71,3 +71,21 @@ Update the appropriate core or API document when a contract or convention change
 - Final implementation report is provided.
 
 ## Implementation Notes
+
+- Baseline documented in `docs/PROJECT-BASELINE.md` (Laravel 13.20.0 / PHP
+  8.3.16; Fortify web auth installed, Sanctum not yet installed; no
+  `/api/v1` routes yet; only default Laravel migrations present; Flutter
+  3.44.6 with Riverpod/GoRouter/Dio/secure-storage foundation already
+  scaffolded under `mobile/lib`; Android package name still the placeholder
+  `com.example.mobile`).
+- No application code, config, dependencies, or database schema were
+  changed — read-only inspection only.
+- Gaps flagged for later phases: missing Sanctum/API routes/LENS tables
+  (expected, tracked by Phases 01-06 and WP-00-02 for package name);
+  duplicate/legacy work-package docs found outside the canonical
+  `docs/work-packages/phase-XX/` tree (`docs/work-packages/WP-00-01...md`,
+  `WP-00-02-architecture-alignment.md`, `WP-01-01-mobile-authentication.md`,
+  `docs/mobile/work-packages/WP-MOB-00-01...md`, `WP-MOB-01-01...md`); and
+  leftover installer/backup directories at the repo root
+  (`lens-flutter-foundation/`, `_foundation_backup_20260719-202508/`). None
+  were modified or removed — see `docs/PROJECT-BASELINE.md` for details.
