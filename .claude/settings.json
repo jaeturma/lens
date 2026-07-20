@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan test:*)",
+      "Bash(php artisan route:list:*)",
+      "Bash(php artisan migrate:status:*)",
+      "Bash(./vendor/bin/pest:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(composer validate:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(dart format:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Bash(rm -rf:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(php artisan migrate:fresh:*)",
+      "Bash(php artisan db:wipe:*)"
+    ]
+  }
+}
