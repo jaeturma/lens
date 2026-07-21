@@ -1,21 +1,39 @@
-# LENS Architecture
+# Architecture
 
 ## Components
 
-1. Laravel 13 web application and REST API
-2. MySQL database
+1. Laravel 13 web administration and REST API
+2. MySQL source database
 3. Flutter Android parent application
-4. RFID readers posting scans to Laravel
-5. Firebase Cloud Messaging for push delivery
+4. Drift SQLite local database
+5. RFID readers
+6. Firebase Cloud Messaging
 
-## Main Flow
+## First Launch
 
-RFID Reader -> Laravel scan endpoint -> raw scan record -> attendance processor -> attendance event and daily summary -> notification record -> Firebase -> Flutter app.
+Install -> enter School ID -> Laravel resolves school -> store immutable school UUID and profile -> lock school binding -> show login.
 
-## Important Boundaries
+## Runtime Data Flow
 
-- Raw RFID scans are immutable source records.
-- Attendance events are processed interpretations of raw scans.
-- Daily attendance summaries may be corrected without deleting raw scans.
-- Parent mobile authentication is separate from RFID device authentication.
-- Laravel remains the source of truth.
+Laravel incremental sync -> repository -> one SQLite transaction -> save cursor -> reactive SQLite query -> Flutter UI.
+
+Flutter screens do not use network responses as their primary view model.
+
+## RFID Flow
+
+Reader -> authenticated raw scan endpoint -> immutable raw scan -> attendance processor -> attendance event and daily summary -> notification record -> optional push signal -> mobile sync -> SQLite -> UI.
+
+## Push Flow
+
+Push contains a small event hint or identifier. Flutter then synchronizes the authoritative record from Laravel.
+
+## Binding Rules
+
+- One installation is bound to one school.
+- A locked binding is never re-requested; School ID entry is skipped on every
+  launch after successful first-launch binding.
+- Logout does not clear the binding.
+- No in-app school reset exists; switching to a different school without
+  uninstalling is not supported (see `docs/PROJECT-SCOPE.md` Excluded).
+- Uninstall/reinstall resets binding.
+- Android backup rules must prevent restoration of the school binding and SQLite database.
