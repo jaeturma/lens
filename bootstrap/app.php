@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticateRfidDevice;
 use App\Http\Middleware\EnsureSchoolMobileAccessIsAvailable;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'school.mobile' => EnsureSchoolMobileAccessIsAvailable::class,
+            'rfid.device' => AuthenticateRfidDevice::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

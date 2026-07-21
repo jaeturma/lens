@@ -79,9 +79,66 @@ multiple historical (non-active) rows over time.
 context and testable without faking authentication state. WP-03-05's
 future admin controller will pass `$request->user()`.
 
+## Scan Ingestion (WP-03-03)
+
+`POST /api/v1/rfid/scans` — the first real HTTP endpoint in this domain.
+Stores the raw scan only; it does not look `uid` up against `rfid_cards`,
+detect duplicates, or interpret attendance direction (WP-03-04/WP-04).
+
+### Authentication
+
+`Authorization: Basic base64(device_code:secret)` — **not** a Sanctum
+bearer token. `App\Http\Middleware\AuthenticateRfidDevice` (alias
+`rfid.device`) parses it, calls `VerifyRfidDeviceCredentials`, and attaches
+the resolved device to the request or returns `401` before the request
+body is even validated. Deliberately not gated by `school.mobile`
+(`EnsureSchoolMobileAccessIsAvailable`) — that middleware's maintenance/
+`mobile_enabled`/minimum-version checks are about the guardian mobile
+*app*, not attendance hardware; disabling the parent app should not stop
+scanning.
+
+### Request
+
+```json
+{
+  "uid": "ABCD1234",
+  "device_timestamp": "2026-07-22T08:15:00Z",
+  "request_id": "seq-1"
+}
+```
+
+No `device` field — the device comes from the Basic Auth credentials, not
+the body. `device_timestamp` is informational only (see
+`docs/API-STANDARD.md` Time Conventions — Laravel's own receipt time,
+`created_at`, is authoritative). `request_id` is the device's own local
+sequence/idempotency identifier; it is stored now but not yet deduplicated
+against — that's WP-03-04.
+
+### Response — `200`
+
+```json
+{
+  "success": true,
+  "message": "Scan recorded.",
+  "data": { "id": 123 }
+}
+```
+
+Deliberately minimal ("concise device responses") — just enough for a
+resource-constrained device to log/correlate.
+
+### Failure
+
+- Missing/incorrect Basic Auth, unknown `device_code`, or a `revoked`
+  device: `401`, nothing stored.
+- Missing/malformed `uid`/`device_timestamp`/`request_id`: `422`, nothing
+  stored.
+- Rate limit (`rfid-scan`, 120 requests/minute per device): `429`.
+
 ## Not Yet Implemented
 
-The scan-ingestion endpoint, its authentication middleware (which will
-call `VerifyRfidDeviceCredentials`), request/response shapes, rate
-limiting, and idempotency are all WP-03-03/03-04, not yet built. No admin
-UI creates/deactivates/replaces cards yet (WP-03-05).
+Cross-referencing a scan's `uid` against `rfid_cards` (unknown/inactive
+card handling), duplicate-request/duplicate-window idempotency using
+`request_id`, and not deleting raw scans are all WP-03-04. Attendance
+interpretation (arrival/departure from `direction_mode`) is WP-04. No
+admin UI creates/deactivates/replaces cards or devices yet (WP-03-05).

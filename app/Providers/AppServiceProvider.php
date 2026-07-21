@@ -58,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Configure named rate limiters for mobile API endpoints.
+     * Configure named rate limiters for mobile and device API endpoints.
      */
     protected function configureRateLimiting(): void
     {
@@ -72,6 +72,12 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('sync', function (Request $request): Limit {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('rfid-scan', function (Request $request): Limit {
+            $device = $request->attributes->get('rfidDevice');
+
+            return Limit::perMinute(120)->by($device?->id ?: $request->ip());
         });
     }
 

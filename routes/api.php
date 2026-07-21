@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ResolveSchoolController;
+use App\Http\Controllers\Api\V1\Rfid\IngestRfidScanController;
 use App\Http\Controllers\Api\V1\Sync\BootstrapController;
 use App\Http\Controllers\Api\V1\Sync\ChangesController;
 use Illuminate\Support\Facades\Route;
@@ -29,5 +30,9 @@ Route::prefix('v1')->group(function (): void {
     Route::prefix('sync')->middleware(['auth:sanctum', 'school.mobile', 'throttle:sync'])->group(function (): void {
         Route::get('bootstrap', BootstrapController::class);
         Route::get('changes', ChangesController::class);
+    });
+
+    Route::prefix('rfid')->middleware(['rfid.device', 'throttle:rfid-scan'])->group(function (): void {
+        Route::post('scans', IngestRfidScanController::class);
     });
 });
