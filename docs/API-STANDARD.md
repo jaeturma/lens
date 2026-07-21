@@ -80,6 +80,10 @@ they are never page-numbered.
   envelope; `message` describes the maintenance state.
 - A mobile app below the school's minimum supported version returns `426`
   (Upgrade Required) with the standard Error envelope.
+- The mobile app reports its installed version via the `X-App-Version`
+  header on gated endpoints (see `docs/api/AUTHENTICATION.md`). The header
+  is optional per endpoint; when absent, the version check is skipped
+  rather than blocking the request.
 
 ## Reference Implementation
 

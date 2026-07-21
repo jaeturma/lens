@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,6 +44,12 @@ class AppServiceProvider extends ServiceProvider
     protected function configureRateLimiting(): void
     {
         RateLimiter::for('school-resolver', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
+
+        RateLimiter::for('mobile-login', function (Request $request): Limit {
+            $throttleKey = Str::transliterate(Str::lower((string) $request->input('email'))).'|'.$request->ip();
+
+            return Limit::perMinute(5)->by($throttleKey);
+        });
     }
 
     /**
