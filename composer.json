@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "lens/lens",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "LENS Digital School System API.",
     "keywords": [
         "laravel",
         "framework"
