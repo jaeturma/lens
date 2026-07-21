@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
+use App\Models\RfidCard;
 use App\Models\RfidDevice;
 use App\Models\School;
 use App\Models\Student;
@@ -52,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
             'guardian' => Guardian::class,
             'guardian_student_link' => GuardianStudentLink::class,
             'rfid_device' => RfidDevice::class,
+            'rfid_card' => RfidCard::class,
         ]);
     }
 
