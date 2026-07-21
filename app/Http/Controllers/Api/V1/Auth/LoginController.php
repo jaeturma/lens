@@ -25,6 +25,10 @@ class LoginController extends Controller
             ]);
         }
 
+        if (! $user->isGuardian()) {
+            return ApiResponse::error('This account is not enabled for mobile login.', [], 403);
+        }
+
         $token = $user->createToken('mobile')->plainTextToken;
 
         return ApiResponse::success([

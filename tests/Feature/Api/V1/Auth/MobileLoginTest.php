@@ -107,6 +107,20 @@ test('login is rejected when the app version is below the minimum', function () 
     $response->assertStatus(426)->assertJson(['success' => false]);
 });
 
+test('a non-guardian account is rejected from mobile login', function () {
+    bindSchool();
+    $user = User::factory()->schoolAdministrator()->create(['password' => Hash::make('correct-password')]);
+
+    $response = $this->postJson('/api/v1/auth/login', [
+        'school_id' => 'SCH-0001',
+        'email' => $user->email,
+        'password' => 'correct-password',
+    ]);
+
+    $response->assertStatus(403)->assertJson(['success' => false]);
+    expect($user->fresh()->tokens()->count())->toBe(0);
+});
+
 test('the mobile login endpoint is rate limited', function () {
     bindSchool();
     $user = User::factory()->create(['password' => Hash::make('correct-password')]);

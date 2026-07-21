@@ -53,6 +53,9 @@ school-bound.
   `school_id`.
 - Wrong email/password: `422`, standard Error envelope, error key `email`
   (does not reveal whether the email exists).
+- Valid credentials for a non-guardian account (System/School Administrator):
+  `403`, standard Error envelope. Only `guardian`-role accounts may obtain a
+  mobile token.
 - School in maintenance: `503`, `message` is the school's configured
   maintenance message.
 - Mobile access disabled for the school: `503`.
@@ -83,10 +86,5 @@ if absent, the version check is skipped rather than blocking the request
 
 ## Not Yet Implemented
 
-Guardian-specific restrictions (only guardian-role accounts may obtain a
-mobile token, not any `users` row) are deferred to WP-01-05 (Roles
-Permissions and Policies) and WP-02-02 (Guardian Data Model), which have not
-run yet. Currently any valid `users` credential can authenticate via this
-endpoint once role/policy infrastructure exists, this will be restricted.
 "Inactive-link behavior" (a guardian's link to a specific student being
 deactivated) depends on WP-02-03 (Student Guardian Relationships).
