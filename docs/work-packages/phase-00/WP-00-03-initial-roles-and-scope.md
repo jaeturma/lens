@@ -2,72 +2,80 @@
 
 ## Objective
 
-Define the initial users and permissions without implementing future roles.
+Define System Administrator, School Administrator, Parent/Guardian, and RFID Device boundaries.
 
 ## Affected Layers
 
 - [x] Laravel
 - [x] Database
-- [ ] API
+- [x] API
 - [ ] Flutter
-- [ ] RFID Device Integration
+- [ ] Android
+- [ ] RFID Integration
 
 ## Scope
 
-Define System Administrator, School Administrator, Parent or Guardian, and RFID Device access boundaries.
+Create a simple permission matrix and explicitly exclude future roles.
 
 ## Out of Scope
 
-Unrelated modules and speculative enhancements.
+Unrelated modules, speculative enhancements, and excluded initial-release features.
 
 ## Dependencies
 
 WP-00-01.
 
-## Database Changes
-
-Document and implement only database changes directly required by this work package.
-
 ## Laravel Requirements
 
-Implement only the Laravel work explicitly required by the objective and scope.
+Implement only the server-side work directly required by this package.
 
 ## API Contract
 
-Document any mobile or device-facing contract added or changed.
+Document every new or changed mobile/device contract.
 
-## Flutter Requirements
+## Flutter and SQLite Requirements
 
-Implement only when Flutter is marked as an affected layer.
+When affected, screens must read SQLite and repositories must synchronize server changes into SQLite.
 
 ## Permissions and Security
 
-Apply least privilege, validation, authorization, and appropriate rate limits.
-
-## Audit Events
-
-Record sensitive administrative or correction actions when applicable.
+Apply least privilege, validation, authorization, rate limiting, and secure secret handling.
 
 ## Tests
 
-Add targeted Pest or Flutter tests for changed behavior. Run only relevant tests during implementation.
+Run targeted Pest, Flutter, SQLite migration, or integration tests appropriate to the changed layer.
 
 ## Documentation Updates
 
-Update the appropriate core or API document when a contract or convention changes.
+Update the relevant core or API document.
 
 ## Acceptance Criteria
 
-- Roles and responsibilities are documented.
-- Out-of-scope roles are explicitly excluded.
-- Permission matrix is ready for Phase 1.
+- Initial roles are clear.
+- Parent access is limited to linked children.
+- RFID devices are not user accounts.
 
 ## Definition of Done
 
 - Scope is complete.
 - Targeted tests pass.
-- Static analysis passes for affected code.
-- Changed contracts are documented.
+- Static analysis passes.
+- Contracts and migrations are documented.
 - Final implementation report is provided.
 
 ## Implementation Notes
+
+- Documentation-only work package: no roles/permissions infrastructure exists
+  yet (Phase 01 — no `routes/api.php`, no Sanctum installed, no `roles` table
+  per the WP-00-01 baseline), so there is no code, migration, or test to add
+  here. This package defines the conceptual boundary ahead of WP-01-05
+  (Roles Permissions and Policies), which implements the actual
+  policies/gates/migrations.
+- Added a "Roles and Permission Matrix" section to `docs/SECURITY.md`
+  covering System Administrator, School Administrator, Parent/Guardian, and
+  RFID Device, consistent with the one-installation-one-school constraint in
+  `docs/ARCHITECTURE.md` and the RFID-device-credential rule already stated
+  in `docs/SECURITY.md`.
+- Excluded/future roles (Teacher, Student login) are called out explicitly,
+  cross-referencing the existing `docs/PROJECT-SCOPE.md` Excluded list rather
+  than duplicating it.
