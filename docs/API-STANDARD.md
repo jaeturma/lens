@@ -81,6 +81,25 @@ they are never page-numbered.
 - A mobile app below the school's minimum supported version returns `426`
   (Upgrade Required) with the standard Error envelope.
 
+## Reference Implementation
+
+`GET /api/v1/health` is the reference implementation of this standard:
+versioned routing, the Success envelope, and an `App\Http\Resources\V1`
+Resource wrapped by `App\Http\Responses\ApiResponse`. New endpoints follow
+the same pattern. It requires no authentication and returns:
+
+```json
+{
+  "success": true,
+  "message": "Request completed.",
+  "data": {
+    "status": "ok",
+    "app": "LENS",
+    "version": "v1"
+  }
+}
+```
+
 ## Rules
 
 - correct HTTP status codes;

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -24,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // API Resources are wrapped in the shared success envelope
+        // (see App\Http\Responses\ApiResponse) instead of Laravel's
+        // default "data" wrapping, to match docs/API-STANDARD.md.
+        JsonResource::withoutWrapping();
     }
 
     /**
