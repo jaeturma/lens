@@ -11,3 +11,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/settings.php';
 require __DIR__.'/students.php';
 require __DIR__.'/guardians.php';
+require __DIR__.'/rfid.php';

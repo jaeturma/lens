@@ -1,6 +1,18 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, UserCog, Users } from 'lucide-react';
+import {
+    BookOpen,
+    CreditCard,
+    FolderGit2,
+    LayoutGrid,
+    Radio,
+    ScanLine,
+    UserCog,
+    Users,
+} from 'lucide-react';
 import GuardianController from '@/actions/App/Http/Controllers/Guardians/GuardianController';
+import RfidCardController from '@/actions/App/Http/Controllers/RfidCards/RfidCardController';
+import RfidDeviceController from '@/actions/App/Http/Controllers/RfidDevices/RfidDeviceController';
+import RfidScanController from '@/actions/App/Http/Controllers/RfidScans/RfidScanController';
 import StudentController from '@/actions/App/Http/Controllers/Students/StudentController';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -54,6 +66,21 @@ export function AppSidebar() {
                       title: 'Guardians',
                       href: GuardianController.index(),
                       icon: UserCog,
+                  },
+                  {
+                      title: 'RFID Devices',
+                      href: RfidDeviceController.index(),
+                      icon: Radio,
+                  },
+                  {
+                      title: 'RFID Cards',
+                      href: RfidCardController.index(),
+                      icon: CreditCard,
+                  },
+                  {
+                      title: 'RFID Scans',
+                      href: RfidScanController.index(),
+                      icon: ScanLine,
                   },
               ]
             : []),
