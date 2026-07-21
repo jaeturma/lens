@@ -89,6 +89,40 @@ test('a malformed payload is rejected and nothing is stored', function () {
     expect(RfidScan::query()->count())->toBe(0);
 });
 
+test('replaying the same request_id returns the same scan id and stores only one row', function () {
+    $registration = (new RegisterRfidDevice)('GATE-001', 'Main Gate', RfidDeviceDirectionMode::Entry);
+    $headers = rfidBasicAuthHeader('GATE-001', $registration->plainSecret);
+    $payload = [
+        'uid' => 'ABCD1234',
+        'device_timestamp' => now()->toIso8601String(),
+        'request_id' => 'seq-1',
+    ];
+
+    $first = $this->withHeaders($headers)->postJson('/api/v1/rfid/scans', $payload);
+    $replay = $this->withHeaders($headers)->postJson('/api/v1/rfid/scans', $payload);
+
+    $first->assertOk();
+    $replay->assertOk();
+    expect($replay->json('data.id'))->toBe($first->json('data.id'));
+    expect(RfidScan::query()->count())->toBe(1);
+});
+
+test('a scan for a uid with no assigned card is stored and classified unknown_card', function () {
+    $registration = (new RegisterRfidDevice)('GATE-001', 'Main Gate', RfidDeviceDirectionMode::Entry);
+
+    $this->withHeaders(rfidBasicAuthHeader('GATE-001', $registration->plainSecret))
+        ->postJson('/api/v1/rfid/scans', [
+            'uid' => 'NEVER-SEEN',
+            'device_timestamp' => now()->toIso8601String(),
+            'request_id' => 'seq-1',
+        ])->assertOk();
+
+    $this->assertDatabaseHas('rfid_scans', [
+        'uid' => 'NEVER-SEEN',
+        'classification' => 'unknown_card',
+    ]);
+});
+
 test('the scan endpoint is rate limited per device', function () {
     $registration = (new RegisterRfidDevice)('GATE-001', 'Main Gate', RfidDeviceDirectionMode::Entry);
     $headers = rfidBasicAuthHeader('GATE-001', $registration->plainSecret);

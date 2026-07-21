@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RfidScanClassification;
 use Database\Factories\RfidScanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,10 +16,11 @@ use Illuminate\Support\Carbon;
  * @property string $uid
  * @property Carbon $device_timestamp
  * @property string $request_id
+ * @property RfidScanClassification $classification
  * @property Carbon $created_at
  * @property-read RfidDevice $device
  */
-#[Fillable(['rfid_device_id', 'uid', 'device_timestamp', 'request_id'])]
+#[Fillable(['rfid_device_id', 'uid', 'device_timestamp', 'request_id', 'classification'])]
 class RfidScan extends Model
 {
     /** @use HasFactory<RfidScanFactory> */
@@ -33,6 +35,7 @@ class RfidScan extends Model
     {
         return [
             'device_timestamp' => 'datetime',
+            'classification' => RfidScanClassification::class,
             'created_at' => 'datetime',
         ];
     }

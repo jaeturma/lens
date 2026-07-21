@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\RfidScanClassification;
 use App\Models\RfidDevice;
 use App\Models\RfidScan;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -23,6 +24,7 @@ class RfidScanFactory extends Factory
             'uid' => fake()->unique()->regexify('[A-F0-9]{8}'),
             'device_timestamp' => now(),
             'request_id' => (string) fake()->unique()->numberBetween(1, 1_000_000),
+            'classification' => RfidScanClassification::Valid,
         ];
     }
 }

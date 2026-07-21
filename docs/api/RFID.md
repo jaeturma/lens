@@ -79,11 +79,11 @@ multiple historical (non-active) rows over time.
 context and testable without faking authentication state. WP-03-05's
 future admin controller will pass `$request->user()`.
 
-## Scan Ingestion (WP-03-03)
+## Scan Ingestion (WP-03-03, classification WP-03-04)
 
 `POST /api/v1/rfid/scans` — the first real HTTP endpoint in this domain.
-Stores the raw scan only; it does not look `uid` up against `rfid_cards`,
-detect duplicates, or interpret attendance direction (WP-03-04/WP-04).
+Every well-formed scan is stored; it does not interpret attendance
+direction (WP-04).
 
 ### Authentication
 
@@ -111,8 +111,7 @@ No `device` field — the device comes from the Basic Auth credentials, not
 the body. `device_timestamp` is informational only (see
 `docs/API-STANDARD.md` Time Conventions — Laravel's own receipt time,
 `created_at`, is authoritative). `request_id` is the device's own local
-sequence/idempotency identifier; it is stored now but not yet deduplicated
-against — that's WP-03-04.
+sequence/idempotency identifier.
 
 ### Response — `200`
 
@@ -135,10 +134,37 @@ resource-constrained device to log/correlate.
   stored.
 - Rate limit (`rfid-scan`, 120 requests/minute per device): `429`.
 
+There is no failure response for a duplicate, unknown-card, or
+inactive-card scan — all three still return the normal `200` above. The
+device isn't told; classification is server-side bookkeeping (see below).
+
+### Idempotency and Classification (WP-03-04)
+
+`App\Actions\Rfid\IngestRfidScan` replaces the naive
+`RfidScan::create()` WP-03-03 started with:
+
+1. **Replay check first**: if a row already exists for this
+   `(rfid_device_id, request_id)` pair, that existing row is returned
+   as-is — no new row, no reclassification. A device retry (e.g. after a
+   dropped response) must not produce a second raw record, since it isn't
+   a second real-world tap.
+2. Otherwise a new row is always created (`rfid_scans.classification`):
+   - `duplicate_window`: the same `uid` (any device) was already scanned
+     in the last 5 seconds — almost certainly one physical tap read
+     twice, not two events. Both rows still exist; only the label differs.
+   - `unknown_card`: `uid` has never appeared in `rfid_cards`.
+   - `inactive_card`: `uid` has `rfid_cards` rows, but none currently
+     `active` (reuses WP-03-02's `active_uid` generated column for an
+     efficient "is there a currently-active row for this uid" check).
+   - `valid`: none of the above.
+
+No raw scan is ever deleted or updated after creation (`rfid_scans` has
+no `updated_at`, and there is no destroy route) — `classification` is
+the only thing that varies per row, decided once, at ingestion time.
+
 ## Not Yet Implemented
 
-Cross-referencing a scan's `uid` against `rfid_cards` (unknown/inactive
-card handling), duplicate-request/duplicate-window idempotency using
-`request_id`, and not deleting raw scans are all WP-03-04. Attendance
-interpretation (arrival/departure from `direction_mode`) is WP-04. No
-admin UI creates/deactivates/replaces cards or devices yet (WP-03-05).
+Attendance interpretation (arrival/departure from `direction_mode`,
+converting a `valid`-classified scan into an attendance event) is WP-04.
+No admin UI creates/deactivates/replaces cards or devices, or shows
+recent scans by classification, yet (WP-03-05).
