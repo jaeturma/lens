@@ -160,6 +160,33 @@ these are not the same column. No admin UI (WP-02-05) creates a `Guardian`
 profile yet; today the only place `status` has an effect is
 `docs/api/AUTHENTICATION.md`'s login rejection for an inactive profile.
 
+### `guardian_student_link` (WP-02-03)
+
+Via `App\Observers\GuardianStudentLinkObserver`. Payload:
+
+```json
+{
+  "uuid": "...",
+  "student_id": 42,
+  "guardian_id": 7,
+  "relationship_type": "mother",
+  "is_primary_contact": true,
+  "status": "active",
+  "notifications_enabled": true
+}
+```
+
+`status` transitioning to `revoked` records a `sync_changes` entry with
+`action` `revoked` (not `updated`) — the client can special-case this to
+remove local access immediately rather than waiting to notice a field
+diff. A `(student_id, guardian_id)` pair has at most one row, ever;
+re-linking after a revocation updates that row back to `active` rather than
+inserting a new one, so a `created` entry for a given `resource_id` is
+always the first and only creation for that pair. No admin UI (WP-02-05)
+creates links yet, and no guardian-facing endpoint (WP-02-06) reads them —
+`Guardian::activeLinks()`/`Student::activeLinks()` exist for that endpoint
+to use.
+
 ## Not Yet Implemented
 
 Guardian-scoped resource authorization — limiting `changes` to a specific

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\StudentSex;
 use App\Enums\StudentStatus;
 use App\Observers\StudentObserver;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use LogicException;
@@ -58,5 +60,21 @@ class Student extends Model
             'sex' => StudentSex::class,
             'status' => StudentStatus::class,
         ];
+    }
+
+    /**
+     * @return HasMany<GuardianStudentLink, $this>
+     */
+    public function links(): HasMany
+    {
+        return $this->hasMany(GuardianStudentLink::class);
+    }
+
+    /**
+     * @return HasMany<GuardianStudentLink, $this>
+     */
+    public function activeLinks(): HasMany
+    {
+        return $this->links()->where('status', GuardianStudentLinkStatus::Active);
     }
 }

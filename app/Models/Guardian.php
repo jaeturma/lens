@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\GuardianStatus;
+use App\Enums\GuardianStudentLinkStatus;
 use App\Observers\GuardianObserver;
 use Database\Factories\GuardianFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use LogicException;
@@ -66,5 +68,21 @@ class Guardian extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return HasMany<GuardianStudentLink, $this>
+     */
+    public function links(): HasMany
+    {
+        return $this->hasMany(GuardianStudentLink::class);
+    }
+
+    /**
+     * @return HasMany<GuardianStudentLink, $this>
+     */
+    public function activeLinks(): HasMany
+    {
+        return $this->links()->where('status', GuardianStudentLinkStatus::Active);
     }
 }
