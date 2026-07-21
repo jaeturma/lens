@@ -1,49 +1,48 @@
-# LENS Unified Development Kit
+# LENS Unified Development Kit v1.1
 
-This package provides one simple roadmap for:
+This package replaces the earlier LENS work-phase package.
 
-- Laravel 13 backend and school administration
-- RFID device and card preparation
-- Attendance processing
-- Parent and guardian records
-- School announcements
-- Notification storage and push delivery
-- Flutter Android parent application
-- Security, testing, and pilot readiness
+It provides one simple roadmap for:
 
-## Installation
+- Laravel 13 school administration and REST API
+- one-time School ID binding on first mobile launch
+- locked school binding until application uninstall
+- SQLite-first Flutter data storage
+- incremental synchronization of new, updated, deleted, revoked, and expired records
+- parent or guardian authentication
+- student and guardian organization
+- RFID devices, cards, scans, and attendance processing
+- school announcements
+- in-app notifications and Firebase push signals
+- Google Play release preparation
 
-Extract and merge this package into:
+## Install
+
+Archive the previous active roadmap before merging this package.
+
+Extract and merge into:
 
 `D:\lara\www\lens`
 
-Do not delete your existing Laravel or Flutter files.
+Do not replace Laravel or Flutter source folders.
 
-## First command
-
-Open PowerShell:
+## Begin
 
 ```powershell
 cd D:\lara\www\lens
 claude
 ```
 
-Then run:
+Then:
 
 ```text
 /implement-work-package docs/work-packages/phase-00/WP-00-01-project-baseline.md
 ```
 
-After completion:
+Verify:
 
 ```text
 /verify-work-package docs/work-packages/phase-00/WP-00-01-project-baseline.md
 ```
 
-Then commit the completed task and use:
-
-```text
-/clear
-```
-
-Continue using `docs/EXECUTION-ORDER.md`.
+Commit and run `/clear` before the next unrelated work package.

@@ -1,54 +1,49 @@
-# LENS Initial Release Scope
-
-## Objective
-
-Prepare Laravel for RFID attendance and build a Flutter Android application where parents or guardians can log in, view linked children, receive attendance notifications, and read school announcements.
-
-## Initial Users
-
-- System Administrator
-- School Administrator
-- Parent or Guardian
-- RFID Device
+# Initial Release Scope
 
 ## Included
 
 ### Laravel
 
-- administrator authentication
-- school configuration
-- student records
-- guardian records
+- school profile and School ID resolver
+- school-bound parent authentication
+- system and school administrator access
+- students and guardians
 - student-guardian links
 - RFID device registry
 - RFID card assignment
-- scan ingestion
-- attendance processing
+- raw scan ingestion
+- attendance rules and processing
 - announcements
-- notification records
-- parent mobile APIs
+- in-app notifications
+- Firebase delivery signaling
+- incremental synchronization
+- minimum mobile version and maintenance control
 - audit logging
 
 ### Flutter
 
-- parent login
-- secure remembered session
+- first-launch School ID setup
+- locked school binding
+- SQLite local database
+- parent login and session restoration
 - linked children
 - attendance history
 - announcements
 - notification inbox
-- push notification handling
+- push-triggered synchronization
 - profile and logout
+- Google Play release preparation
 
-## Explicitly Excluded
+## Excluded
 
-- teacher app
+- school switching without uninstall
+- teacher application
 - student login
 - grading and report cards
 - LMS
-- payments
+- payment
 - SMS
-- guidance case management
+- guidance cases
 - facial recognition
 - QR attendance
 - transport
@@ -56,4 +51,4 @@ Prepare Laravel for RFID attendance and build a Flutter Android application wher
 - inventory
 - AI
 - iOS
-- multi-school tenancy
+- multi-school tenancy in one Laravel installation

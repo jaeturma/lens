@@ -1,9 +1,7 @@
 # Architecture Decisions
 
-Create one short file only when a decision materially affects future work.
+Create an ADR only for durable decisions, such as the selected SQLite library or sync cursor design.
 
-Suggested naming:
+Naming:
 
 `ADR-001-short-title.md`
-
-Do not create decision files for routine implementation details.

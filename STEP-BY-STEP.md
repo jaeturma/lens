@@ -1,65 +1,67 @@
-# LENS Step-by-Step Claude CLI Runbook
+# Claude CLI Runbook
 
-## 1. Merge the package
+## 1. Archive the previous roadmap
 
-Extract the ZIP into:
+Do not delete it immediately. Move the previous active documentation to a dated folder such as:
+
+`docs-archive\before-offline-first-v1.1`
+
+Keep the existing Flutter foundation files.
+
+## 2. Merge this package
+
+Extract this ZIP into:
 
 `D:\lara\www\lens`
 
-Merge folders when prompted. Do not delete existing source code.
+## 3. Update root instructions
 
-## 2. Review the addendum
+Merge the permanent rules in `CLAUDE-LENS-ADDENDUM.md` into the root `CLAUDE.md`, or always tell Claude to read both.
 
-Merge the important rules from `CLAUDE-LENS-ADDENDUM.md` into the root `CLAUDE.md`, or instruct Claude to read both files.
-
-## 3. Start Claude
+## 4. Start Claude
 
 ```powershell
 cd D:\lara\www\lens
 claude
 ```
 
-## 4. Run the first baseline task
+## 5. Execute one package
 
 ```text
 /implement-work-package docs/work-packages/phase-00/WP-00-01-project-baseline.md
 ```
 
-## 5. Verify it
+## 6. Verify
 
 ```text
 /verify-work-package docs/work-packages/phase-00/WP-00-01-project-baseline.md
 ```
 
-## 6. Commit and clear
+## 7. Commit and clear
 
-Commit the completed work package using Git, then:
+Commit the completed package, then:
 
 ```text
 /clear
 ```
 
-## 7. Continue in order
-
-Follow `docs/EXECUTION-ORDER.md`.
-
-## Laravel-only execution
+## Laravel-only section
 
 ```text
-/implement-laravel-section docs/work-packages/phase-XX/WP-XX-XX-task.md
+/implement-laravel-section <work-package-path>
 ```
 
-## Flutter-only execution
+## Flutter-only section
 
 ```text
-/implement-flutter-section docs/work-packages/phase-XX/WP-XX-XX-task.md
+/implement-flutter-section <work-package-path>
 ```
 
-## Important token-saving rules
+## Token-saving rules
 
-- One work package per session.
-- One codebase per session when possible.
-- Use `/clear` after each completed package.
-- Run targeted tests, not full suites, during routine tasks.
-- Do not ask Claude to inspect the entire repository.
-- Do not install additional skills, agents, or MCP servers unless a real need appears.
+- one work package per session;
+- one codebase per session where possible;
+- Laravel contract first, Flutter implementation second;
+- use targeted tests;
+- never request a full repository review unless the baseline package requires it;
+- do not install more agents, skills, or MCP servers until a concrete need appears.

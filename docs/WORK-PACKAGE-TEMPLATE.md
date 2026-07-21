@@ -1,4 +1,4 @@
-# WP-XX-XX — Task Title
+# WP-XX-XX — Title
 
 ## Objective
 
@@ -8,7 +8,8 @@
 - [ ] Database
 - [ ] API
 - [ ] Flutter
-- [ ] RFID Device Integration
+- [ ] Android
+- [ ] RFID Integration
 
 ## Scope
 
@@ -16,17 +17,13 @@
 
 ## Dependencies
 
-## Database Changes
-
 ## Laravel Requirements
 
 ## API Contract
 
-## Flutter Requirements
+## Flutter and SQLite Requirements
 
 ## Permissions and Security
-
-## Audit Events
 
 ## Tests
 

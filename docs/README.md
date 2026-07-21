@@ -1,18 +1,15 @@
-# LENS Documentation
+# LENS Documentation v1.1
 
-This documentation is organized around one product roadmap.
+This is the active source of truth for the school-bound, SQLite-first initial release.
 
-## Core Documents
+Read in this order:
 
-- `PROJECT-SCOPE.md`
-- `ARCHITECTURE.md`
-- `DATABASE.md`
-- `API-STANDARD.md`
-- `SECURITY.md`
-- `EXECUTION-ORDER.md`
+1. `PROJECT-SCOPE.md`
+2. `ARCHITECTURE.md`
+3. `OFFLINE-SYNC.md`
+4. `API-STANDARD.md`
+5. `DATABASE.md`
+6. `SECURITY.md`
+7. `EXECUTION-ORDER.md`
 
-## Work Packages
-
-Work packages are grouped by phase under `docs/work-packages/`.
-
-Each package may affect Laravel, database, API, Flutter, or RFID integration. Implement only the requested section per Claude session.
+Work packages are stored under `docs/work-packages/phase-XX/`.

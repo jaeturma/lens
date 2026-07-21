@@ -1,3 +1,3 @@
 # Attendance API
 
-Define linked children attendance status, history, and daily summary contracts here.
+Defines guardian child attendance status and synchronized attendance history.

@@ -1,3 +1,3 @@
 # Announcements API
 
-Define announcement lists, detail views, targeting, and read-state contracts here.
+Defines targeted active announcements, expiration, and synchronization behavior.

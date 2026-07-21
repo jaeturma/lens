@@ -1,11 +1,11 @@
 ---
 name: implement-flutter-section
-description: Complete only the Flutter portion of one LENS work package using an already documented Laravel API contract.
+description: Complete only the Flutter, Drift SQLite, repository, routing, Android, and Flutter-test sections.
 ---
 
-- Work only inside `mobile/`.
-- Do not modify Laravel unless a confirmed API defect blocks the task.
-- Use the existing feature-first foundation, Riverpod, GoRouter, Dio, and secure storage.
-- Implement loading, empty, error, and success states.
-- Run `dart format`, targeted Flutter tests, and `flutter analyze`.
-- Report any API mismatch instead of silently inventing a contract.
+- Work inside `mobile/`.
+- Do not modify Laravel unless a confirmed contract defect blocks the task.
+- Screens read SQLite, never raw network responses.
+- Preserve locked school binding.
+- Commit sync cursor only after the SQLite transaction succeeds.
+- Run formatting, targeted tests, and `flutter analyze`.

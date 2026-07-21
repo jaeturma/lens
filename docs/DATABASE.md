@@ -1,6 +1,6 @@
-# LENS Database Baseline
+# Database Baseline
 
-Expected initial entities:
+## Laravel/MySQL
 
 - users
 - roles and permissions
@@ -12,20 +12,32 @@ Expected initial entities:
 - rfid_devices
 - rfid_cards
 - rfid_scans
+- attendance_rules
 - attendance_events
 - attendance_daily_summaries
-- attendance_rules
 - announcements
 - announcement_audiences
 - notifications
 - mobile_device_tokens
+- sync_changes or equivalent change feed
 - audit_logs
 
-## Principles
+## Flutter/SQLite
 
-- Use foreign keys where appropriate.
-- Use unique indexes for LRN, device code, active RFID UID, and relevant tokens.
-- Use soft deletes only when recovery is useful.
-- Preserve raw scan history.
-- Use explicit status fields instead of ambiguous booleans.
-- Store timestamps in a consistent timezone strategy.
+- app_settings
+- school_profile
+- guardian_profile
+- students
+- attendance_records
+- announcements
+- notifications
+- sync_state
+- mobile_device_state
+
+## Rules
+
+- public School ID resolves to an immutable school UUID;
+- raw RFID scans are preserved;
+- synchronized resources expose stable IDs and versions;
+- deletions and revocations use tombstones or equivalent sync events;
+- unique indexes protect LRN, device code, active RFID UID, and device tokens.

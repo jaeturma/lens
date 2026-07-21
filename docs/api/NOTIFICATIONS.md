@@ -1,3 +1,3 @@
 # Notifications API
 
-Define mobile token registration, inbox, unread count, mark-read, and delivery logging contracts here.
+Defines notification inbox, unread count, read state, device token registration, and push delivery logging.
