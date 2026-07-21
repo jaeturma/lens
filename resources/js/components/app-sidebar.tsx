@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, Users } from 'lucide-react';
+import { BookOpen, FolderGit2, LayoutGrid, UserCog, Users } from 'lucide-react';
+import GuardianController from '@/actions/App/Http/Controllers/Guardians/GuardianController';
 import StudentController from '@/actions/App/Http/Controllers/Students/StudentController';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -48,6 +49,11 @@ export function AppSidebar() {
                       title: 'Students',
                       href: StudentController.index(),
                       icon: Users,
+                  },
+                  {
+                      title: 'Guardians',
+                      href: GuardianController.index(),
+                      icon: UserCog,
                   },
               ]
             : []),
