@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Configure named rate limiters for unauthenticated public API endpoints.
+     * Configure named rate limiters for mobile API endpoints.
      */
     protected function configureRateLimiting(): void
     {
@@ -49,6 +49,10 @@ class AppServiceProvider extends ServiceProvider
             $throttleKey = Str::transliterate(Str::lower((string) $request->input('email'))).'|'.$request->ip();
 
             return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        RateLimiter::for('sync', function (Request $request): Limit {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
     }
 

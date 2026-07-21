@@ -36,7 +36,7 @@ Mobile requests after school resolution carry the immutable school UUID through 
   "data": {
     "next_cursor": "opaque-value",
     "has_more": false,
-    "changes": {}
+    "changes": []
   }
 }
 ```

@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ResolveSchoolController;
+use App\Http\Controllers\Api\V1\Sync\BootstrapController;
+use App\Http\Controllers\Api\V1\Sync\ChangesController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -22,5 +24,10 @@ Route::prefix('v1')->group(function (): void {
             Route::get('me', MeController::class);
             Route::post('logout', LogoutController::class);
         });
+    });
+
+    Route::prefix('sync')->middleware(['auth:sanctum', 'school.mobile', 'throttle:sync'])->group(function (): void {
+        Route::get('bootstrap', BootstrapController::class);
+        Route::get('changes', ChangesController::class);
     });
 });

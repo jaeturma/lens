@@ -1,17 +1,7 @@
 <?php
 
-use App\Models\School;
-use App\Models\SchoolSettings;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-
-function bindSchool(array $settingsOverrides = []): School
-{
-    $school = School::factory()->create(['public_id' => 'SCH-0001']);
-    SchoolSettings::factory()->for($school)->create($settingsOverrides);
-
-    return $school;
-}
 
 test('a valid guardian login issues a mobile token', function () {
     bindSchool();

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\School;
+use App\Models\SchoolSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +46,13 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * @param  array<string, mixed>  $settingsOverrides
+ */
+function bindSchool(array $settingsOverrides = []): School
 {
-    // ..
+    $school = School::factory()->create(['public_id' => 'SCH-0001']);
+    SchoolSettings::factory()->for($school)->create($settingsOverrides);
+
+    return $school;
 }

@@ -5,8 +5,7 @@ Defines bootstrap, incremental cursor, change types, pagination, tombstones, cor
 ## Change Feed Foundation (WP-01-07)
 
 The `sync_changes` table is the server-side append-only change feed later
-work packages record to and WP-01-08's bootstrap/incremental endpoints read
-from. No HTTP endpoint exists yet — see "Not Yet Implemented" below.
+work packages record to and the endpoints below read from.
 
 ### Change Entry
 
@@ -37,9 +36,86 @@ whether more remain (`has_more`). When there are no new changes, the
 response is an empty page and the cursor is returned unchanged — the client
 does not advance past data it has not actually received.
 
+## Bootstrap (WP-01-08)
+
+`GET /api/v1/sync/bootstrap` — requires a valid Sanctum bearer token for a
+guardian account (`403` for any other role). Gated by the `school.mobile`
+middleware (maintenance/mobile-disabled/version, same as login — see
+`docs/api/AUTHENTICATION.md`) and the `sync` rate limiter (30
+requests/minute per user). Returns the school profile, the authenticated
+user, and `next_cursor` — the change-feed position as of the bootstrap
+call, so the first incremental sync request does not re-fetch data the
+bootstrap already returned.
+
+```json
+{
+  "success": true,
+  "message": "Request completed.",
+  "data": {
+    "school": {
+      "school_id": "SCH-0001",
+      "uuid": "...",
+      "name": "Example School",
+      "logo_url": null,
+      "timezone": "Asia/Manila",
+      "mobile_enabled": true,
+      "maintenance_mode": false,
+      "maintenance_message": null,
+      "notifications_enabled": true,
+      "minimum_app_version": "0.1.0"
+    },
+    "user": {
+      "id": 1,
+      "name": "Guardian Name",
+      "email": "guardian@example.com"
+    },
+    "next_cursor": "MA=="
+  }
+}
+```
+
+## Incremental Sync (WP-01-08)
+
+`GET /api/v1/sync/changes` — same authentication, gating, and rate limit as
+bootstrap.
+
+Query parameters:
+
+- `cursor` (required) — an opaque cursor string, from `bootstrap`'s
+  `next_cursor` or a previous call's `next_cursor`. Missing or malformed:
+  `422`. There is no timestamp-based fallback (see `docs/OFFLINE-SYNC.md`
+  Cursor Rules).
+- `limit` (optional) — results per call, `1`-`200`, default `100`.
+
+```json
+{
+  "success": true,
+  "message": "Request completed.",
+  "data": {
+    "next_cursor": "Mg==",
+    "has_more": false,
+    "changes": [
+      {
+        "resource_type": "announcement",
+        "resource_id": 42,
+        "action": "created",
+        "payload": {},
+        "created_at": "2026-07-21T02:15:00Z"
+      }
+    ]
+  }
+}
+```
+
+When there are no new changes, `changes` is empty and `next_cursor` is
+unchanged from the request's `cursor` (see "Pagination" above).
+
 ## Not Yet Implemented
 
-The HTTP bootstrap and incremental sync endpoints, the guardian-scoped
-authorization that limits a sync response to a guardian's own linked
-students/school data, and the request/response JSON shapes are all deferred
-to WP-01-08 (Bootstrap and Incremental Sync APIs), which has not run yet.
+Guardian-scoped resource authorization — limiting `changes` to a specific
+guardian's own linked students/school data — is deferred to the phase 2+
+work packages that add those resource types and call `RecordSyncChange`;
+there is nothing to scope yet. Today the only authorization is "the
+authenticated account holds the guardian role," which is already the case
+for every account able to obtain a mobile token (see
+`docs/api/AUTHENTICATION.md`).
