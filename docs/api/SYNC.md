@@ -14,6 +14,10 @@ Each row: `resource_type`/`resource_id` (the changed resource), `action`
 `payload` (JSON, resource-specific; secret-shaped keys are redacted before
 storage), `created_at`. Entries are immutable — there is no `updated_at`.
 
+`resource_type` is a short, stable alias from `Relation::morphMap()`
+(`App\Providers\AppServiceProvider`), e.g. `student`, not the PHP class
+name — the contract does not change if a model is renamed or moved.
+
 ### Tombstones
 
 A change entry with `action` `deleted`, `revoked`, or `expired` is itself
@@ -96,10 +100,21 @@ Query parameters:
     "has_more": false,
     "changes": [
       {
-        "resource_type": "announcement",
+        "resource_type": "student",
         "resource_id": 42,
         "action": "created",
-        "payload": {},
+        "payload": {
+          "uuid": "...",
+          "lrn": "123456789012",
+          "student_number": "SN-0001",
+          "name": "Juan Dela Cruz",
+          "sex": "male",
+          "grade": "Grade 7",
+          "section": "Diamond",
+          "school_year": "2026-2027",
+          "status": "active",
+          "photo_url": null
+        },
         "created_at": "2026-07-21T02:15:00Z"
       }
     ]
@@ -109,6 +124,18 @@ Query parameters:
 
 When there are no new changes, `changes` is empty and `next_cursor` is
 unchanged from the request's `cursor` (see "Pagination" above).
+
+## Synchronized Resources
+
+### `student` (WP-02-01)
+
+`App\Observers\StudentObserver` records a `sync_changes` entry
+(`created`/`updated`/`deleted`) on every `App\Models\Student` mutation, with
+a full-snapshot `payload` (shown above) rather than a partial diff — the
+mobile client can always upsert its local SQLite row wholesale from the
+latest entry for a given `resource_id`. No admin UI (WP-02-04) or
+guardian-facing endpoint (WP-02-06) exists yet to create students through;
+this is the data model and its sync participation only.
 
 ## Not Yet Implemented
 
