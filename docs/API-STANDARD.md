@@ -1,10 +1,14 @@
-# LENS API Standard
+# API Standard
 
 ## Prefix
 
 `/api/v1`
 
-## Success Shape
+## Required Context
+
+Mobile requests after school resolution carry the immutable school UUID through the documented request body, route, header, or authenticated context.
+
+## Success
 
 ```json
 {
@@ -14,7 +18,7 @@
 }
 ```
 
-## Error Shape
+## Error
 
 ```json
 {
@@ -24,12 +28,68 @@
 }
 ```
 
+## Synchronization Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "next_cursor": "opaque-value",
+    "has_more": false,
+    "changes": {}
+  }
+}
+```
+
+## Pagination
+
+Non-sync list endpoints use Laravel's standard paginator shape inside `data`:
+
+```json
+{
+  "success": true,
+  "data": [],
+  "meta": {
+    "current_page": 1,
+    "per_page": 20,
+    "total": 0
+  }
+}
+```
+
+Sync endpoints use the cursor-based Synchronization Response above instead;
+they are never page-numbered.
+
+## Time Conventions
+
+- Laravel stores and returns timestamps in UTC, ISO 8601 (e.g.
+  `2026-07-21T02:15:00Z`).
+- Each school profile carries an IANA timezone, `Asia/Manila` by default (see
+  `docs/api/SCHOOL-RESOLVER.md`). Flutter renders wall-clock times in the
+  school's timezone, not device-local time.
+- Attendance-day boundaries (arrival, late, absence cutoffs) are computed in
+  the school's configured timezone, never in UTC or raw device time.
+- An RFID device timestamp is accepted as an informational field on the raw
+  scan record only. Laravel's own receipt time is authoritative for
+  processing; client-only timestamps are never trusted for ordering (see
+  `docs/OFFLINE-SYNC.md` Cursor Rules).
+
+## Maintenance and Version
+
+- A school in maintenance mode returns `503` with the standard Error
+  envelope; `message` describes the maintenance state.
+- A mobile app below the school's minimum supported version returns `426`
+  (Upgrade Required) with the standard Error envelope.
+
 ## Rules
 
-- Use HTTP status codes correctly.
-- Use Laravel API Resources.
-- Never expose stack traces in production.
-- Paginated responses must include pagination metadata.
-- Mobile APIs require Sanctum authentication unless explicitly public.
-- Device APIs require dedicated device credentials.
-- Document every changed contract in `docs/api/`.
+- correct HTTP status codes;
+- Laravel API Resources;
+- consistent pagination;
+- dedicated RFID device authentication;
+- school-bound guardian authentication;
+- device and guardian credentials are separate types and are never
+  interchangeable;
+- minimum supported app version and maintenance responses;
+- no production stack traces;
+- changed contracts must update `docs/api/`.
