@@ -10,6 +10,7 @@ use App\Models\School;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class BootstrapController extends Controller
 {
@@ -23,10 +24,14 @@ class BootstrapController extends Controller
         }
 
         $school = School::query()->with('settings')->first();
+        $guardian = $user->guardian;
+        $children = $guardian ? $guardian->activeLinks()->with('student')->get() : new Collection;
 
         return ApiResponse::success(new BootstrapResource((object) [
             'school' => $school,
             'user' => $user,
+            'guardian' => $guardian,
+            'children' => $children,
             'next_cursor' => (string) $currentSyncCursor(),
         ]));
     }

@@ -47,9 +47,16 @@ guardian account (`403` for any other role). Gated by the `school.mobile`
 middleware (maintenance/mobile-disabled/version, same as login — see
 `docs/api/AUTHENTICATION.md`) and the `sync` rate limiter (30
 requests/minute per user). Returns the school profile, the authenticated
-user, and `next_cursor` — the change-feed position as of the bootstrap
-call, so the first incremental sync request does not re-fetch data the
-bootstrap already returned.
+user, the guardian's own profile and actively linked children (WP-02-06),
+and `next_cursor` — the change-feed position as of the bootstrap call, so
+the first incremental sync request does not re-fetch data the bootstrap
+already returned.
+
+`guardian` is `null` and `children` is `[]` when the account has no
+`Guardian` profile yet (a guardian-role login does not require one — see
+WP-02-02/04/05). `children` only ever contains **actively** linked
+students, per `Guardian::activeLinks()` (WP-02-03/06) — a revoked link's
+student never appears here, even if it appeared in a previous bootstrap.
 
 ```json
 {
@@ -73,6 +80,31 @@ bootstrap already returned.
       "name": "Guardian Name",
       "email": "guardian@example.com"
     },
+    "guardian": {
+      "uuid": "...",
+      "name": "Maria Dela Cruz",
+      "email": "maria@example.com",
+      "mobile_number": "09171234567",
+      "status": "active",
+      "notify_attendance": true,
+      "notify_announcements": true
+    },
+    "children": [
+      {
+        "uuid": "...",
+        "lrn": "123456789012",
+        "student_number": "SN-0001",
+        "name": "Juan Dela Cruz",
+        "sex": "male",
+        "grade": "Grade 7",
+        "section": "Diamond",
+        "school_year": "2026-2027",
+        "status": "active",
+        "photo_url": null,
+        "relationship_type": "mother",
+        "is_primary_contact": true
+      }
+    ],
     "next_cursor": "MA=="
   }
 }
@@ -125,6 +157,35 @@ Query parameters:
 When there are no new changes, `changes` is empty and `next_cursor` is
 unchanged from the request's `cursor` (see "Pagination" above).
 
+### Guardian-Scoped Authorization (WP-02-06)
+
+`App\Actions\Sync\ScopeChangesToGuardian` filters the page `FetchSyncChanges`
+returns before it is serialized:
+
+- `school` entries: visible to every guardian (install-wide, not owned by
+  any one guardian).
+- `student` entries: visible only if the student is in the guardian's
+  **currently active** linked set. Once a link is revoked, that student's
+  entries (past and future) stop appearing.
+- `guardian` entries: visible only for the guardian's own record.
+- `guardian_student_link` entries: visible for links the guardian **owns,
+  regardless of current status** — deliberately not filtered by active
+  status, because the revoked-link entry is exactly what tells the client
+  to remove a student locally.
+- Any other `resource_type` is denied by default. A future work package
+  that introduces a new synchronized resource (attendance, announcements,
+  notifications) must add a branch to this action, or its entries are
+  silently invisible to guardians rather than leaked.
+
+This filtering happens **after** pagination, not inside it — `limit`
+still bounds how many raw rows `FetchSyncChanges` reads, so a returned
+`changes` array can be shorter than `limit` (even empty) while `has_more`
+is `true`, if everything in that raw page belonged to other guardians.
+`next_cursor` always reflects the true underlying feed position, so
+polling again with it converges on the guardian's real backlog — clients
+should keep calling with the returned `next_cursor` while `has_more` is
+`true`, not assume a full-length `changes` array.
+
 ## Synchronized Resources
 
 ### `student` (WP-02-01)
@@ -133,9 +194,9 @@ unchanged from the request's `cursor` (see "Pagination" above).
 (`created`/`updated`/`deleted`) on every `App\Models\Student` mutation, with
 a full-snapshot `payload` (shown above) rather than a partial diff — the
 mobile client can always upsert its local SQLite row wholesale from the
-latest entry for a given `resource_id`. No admin UI (WP-02-04) or
-guardian-facing endpoint (WP-02-06) exists yet to create students through;
-this is the data model and its sync participation only.
+latest entry for a given `resource_id`. Created/edited via the admin web
+UI (WP-02-04); exposed to guardians (scoped to active links) via
+bootstrap's `children` and incremental sync (WP-02-06).
 
 ### `guardian` (WP-02-02)
 
@@ -156,9 +217,12 @@ Same pattern via `App\Observers\GuardianObserver`. Payload:
 `email`/`name` here are the guardian's own contact fields on the `guardians`
 table, distinct from `User.email` (the login credential returned by
 `bootstrap`'s `user` field) — see WP-02-02 Implementation Notes for why
-these are not the same column. No admin UI (WP-02-05) creates a `Guardian`
-profile yet; today the only place `status` has an effect is
-`docs/api/AUTHENTICATION.md`'s login rejection for an inactive profile.
+these are not the same column. Created via the admin web UI (WP-02-05).
+`status` affects both login (`docs/api/AUTHENTICATION.md`'s rejection for
+an inactive profile) and sync (an inactive guardian can still hold a valid
+token until it's revoked, but their own `guardian`-type entries are scoped
+to their own record either way — inactive status does not currently hide
+a guardian's own profile from themselves over sync).
 
 ### `guardian_student_link` (WP-02-03)
 
@@ -182,17 +246,13 @@ remove local access immediately rather than waiting to notice a field
 diff. A `(student_id, guardian_id)` pair has at most one row, ever;
 re-linking after a revocation updates that row back to `active` rather than
 inserting a new one, so a `created` entry for a given `resource_id` is
-always the first and only creation for that pair. No admin UI (WP-02-05)
-creates links yet, and no guardian-facing endpoint (WP-02-06) reads them —
-`Guardian::activeLinks()`/`Student::activeLinks()` exist for that endpoint
-to use.
+always the first and only creation for that pair. Created/revoked via the
+admin web UI (WP-02-05); a guardian only ever sees their own links over
+sync (see "Guardian-Scoped Authorization" above).
 
 ## Not Yet Implemented
 
-Guardian-scoped resource authorization — limiting `changes` to a specific
-guardian's own linked students/school data — is deferred to the phase 2+
-work packages that add those resource types and call `RecordSyncChange`;
-there is nothing to scope yet. Today the only authorization is "the
-authenticated account holds the guardian role," which is already the case
-for every account able to obtain a mobile token (see
-`docs/api/AUTHENTICATION.md`).
+No synchronized resource exists yet for attendance, announcements, or
+notifications (phase 4-6). Their eventual `resource_type`s must be added
+to `App\Actions\Sync\ScopeChangesToGuardian`'s `match` when they land, or
+their entries will be silently invisible to guardians (denied by default).

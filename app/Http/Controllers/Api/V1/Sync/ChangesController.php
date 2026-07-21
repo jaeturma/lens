@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Sync;
 
 use App\Actions\Sync\FetchSyncChanges;
+use App\Actions\Sync\ScopeChangesToGuardian;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sync\SyncChangesRequest;
 use App\Http\Resources\V1\SyncChangesResource;
@@ -13,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 
 class ChangesController extends Controller
 {
-    public function __invoke(SyncChangesRequest $request, FetchSyncChanges $fetchSyncChanges): JsonResponse
+    public function __invoke(SyncChangesRequest $request, FetchSyncChanges $fetchSyncChanges, ScopeChangesToGuardian $scopeChangesToGuardian): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -27,11 +28,12 @@ class ChangesController extends Controller
         $limit = (int) ($validated['limit'] ?? 100);
 
         $page = $fetchSyncChanges($cursor, $limit);
+        $changes = $scopeChangesToGuardian($page->changes, $user->guardian);
 
         return ApiResponse::success(new SyncChangesResource((object) [
             'next_cursor' => (string) $page->nextCursor,
             'has_more' => $page->hasMore,
-            'changes' => $page->changes,
+            'changes' => $changes,
         ]));
     }
 }

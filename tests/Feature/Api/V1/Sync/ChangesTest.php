@@ -1,8 +1,13 @@
 <?php
 
 use App\Actions\Sync\RecordSyncChange;
+use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\SyncChangeAction;
+use App\Models\Guardian;
+use App\Models\GuardianStudentLink;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\SyncChange;
 use App\Models\User;
 use App\Support\Sync\SyncCursor;
 
@@ -103,6 +108,52 @@ test('results are chunked by limit and report has_more', function () {
 
     $response->assertOk()->assertJson(['data' => ['has_more' => true]]);
     expect($response->json('data.changes'))->toHaveCount(2);
+});
+
+test('incremental sync only returns student changes for the guardian\'s own active links', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+
+    $ownStudent = Student::factory()->create();
+    $otherStudent = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($ownStudent)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    // Capture the cursor after setup so only the two explicit changes below are asserted on;
+    // creating the guardian/students/link above already produced their own (correctly-visible) entries.
+    $cursorAfterSetup = SyncCursor::fromSequence((int) SyncChange::query()->max('id'));
+
+    (new RecordSyncChange)($ownStudent, SyncChangeAction::Updated);
+    (new RecordSyncChange)($otherStudent, SyncChangeAction::Updated);
+
+    $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
+
+    $response->assertOk();
+    $changes = $response->json('data.changes');
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['resource_id'])->toBe($ownStudent->id);
+});
+
+test('incremental sync returns a link revocation even after the link is no longer active', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    $link = GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Revoked]);
+
+    $cursorAfterSetup = SyncCursor::fromSequence((int) SyncChange::query()->max('id'));
+
+    (new RecordSyncChange)($link, SyncChangeAction::Revoked);
+
+    $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
+
+    $response->assertOk();
+    $changes = $response->json('data.changes');
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['resource_type'])->toBe('guardian_student_link');
+    expect($changes[0]['action'])->toBe('revoked');
 });
 
 test('a non-guardian account is rejected from incremental sync', function () {
