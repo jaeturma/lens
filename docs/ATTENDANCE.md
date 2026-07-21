@@ -45,10 +45,49 @@ school day are expected to be corrected manually via WP-04-05 (Attendance
 Corrections) once that package exists. A per-date holiday calendar is not
 planned for the initial release (see `docs/PROJECT-SCOPE.md`).
 
+## Event Processor (WP-04-02)
+
+`App\Actions\Attendance\ProcessRfidScan` converts a `valid`-classified
+`RfidScan` (WP-03-04) into an `attendance_events` row, and rolls it into
+that student's `attendance_daily_summaries` row for the day. It runs
+automatically via `App\Observers\RfidScanObserver` on every scan
+`created` event — no separate trigger or job is needed.
+
+- Only `RfidScanClassification::Valid` scans are processed; duplicate/
+  unknown-card/inactive-card scans never produce an event.
+- `direction_mode` `entry`/`exit` map deterministically to
+  `App\Enums\AttendanceEventType::Arrival`/`Departure`. A `both`-direction
+  device's scans are **left unprocessed** (`ProcessRfidScan` returns
+  `null`, no event created) — disambiguating them is WP-04-03's job, not
+  invented here. `RfidScan::attendanceEvent` (`null` until processed) is
+  how processing status is traced.
+- `attendance_events.rfid_scan_id` is unique — calling `ProcessRfidScan`
+  again on an already-processed scan returns the existing event instead
+  of creating a duplicate or re-applying the daily-summary update. This
+  is the "reprocessing is safe" guarantee.
+- The daily summary's `date` is the event's `occurred_at` (the scan's
+  `created_at` — Laravel's receipt time, never the informational
+  `device_timestamp`) converted to the **school's configured timezone**,
+  not UTC — the same timezone-correctness discipline as WP-04-01's cutoff
+  helpers, proven by a test asserting an exact date across a UTC/Asia-
+  Manila day boundary. A new arrival event only ever touches
+  `arrival_event_id` on that day's summary (and a departure only
+  `departure_event_id`) — one type's update never clobbers the other's
+  already-recorded event for the same day.
+- `AttendanceDailySummary` gained sync-feed participation
+  (`#[ObservedBy]` → `RecordSyncChange`, registered in the
+  `Relation::morphMap()` as `attendance_daily_summary`) — but no guardian
+  can see these entries yet. `App\Actions\Sync\ScopeChangesToGuardian`
+  (WP-02-06) has no branch for this resource type, so it is invisible by
+  default until WP-04-06 (Parent Attendance Sync Contract) adds the
+  scoping. `AttendanceEvent` itself is not synced — the daily summary
+  already carries what a mobile client needs.
+
 ## Not Yet Implemented
 
-Converting a raw scan into an attendance event (WP-04-02), classifying it
-as arrival/departure/late (WP-04-03), computing daily absence
-(WP-04-04), corrections (WP-04-05), and the guardian-facing sync contract
-for attendance (WP-04-06) are all later phase-04 work packages — none of
-them exist yet. This document will grow as they land.
+Classifying arrival/departure with "first of the day" deduplication,
+resolving `both`-direction devices, and late detection (WP-04-03),
+computing daily absence (WP-04-04), corrections (WP-04-05), and the
+guardian-facing sync contract for attendance (WP-04-06) are all later
+phase-04 work packages — none of them exist yet. This document will grow
+as they land.

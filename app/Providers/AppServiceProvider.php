@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
 use App\Models\RfidCard;
@@ -54,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
             'guardian_student_link' => GuardianStudentLink::class,
             'rfid_device' => RfidDevice::class,
             'rfid_card' => RfidCard::class,
+            'attendance_daily_summary' => AttendanceDailySummary::class,
         ]);
     }
 
