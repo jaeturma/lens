@@ -10,6 +10,7 @@ Read in this order:
 4. `API-STANDARD.md`
 5. `DATABASE.md`
 6. `SECURITY.md`
-7. `EXECUTION-ORDER.md`
+7. `ATTENDANCE.md`
+8. `EXECUTION-ORDER.md`
 
 Work packages are stored under `docs/work-packages/phase-XX/`.

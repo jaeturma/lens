@@ -4,6 +4,7 @@ use App\Actions\Rfid\IngestRfidScan;
 use App\Actions\RfidCards\AssignRfidCard;
 use App\Enums\RfidCardStatus;
 use App\Enums\RfidScanClassification;
+use App\Models\AttendanceRule;
 use App\Models\RfidDevice;
 use App\Models\RfidScan;
 use App\Models\Student;
@@ -69,6 +70,21 @@ test('replaying the same device and request_id returns the existing row without 
 
     expect($replay->id)->toBe($first->id);
     expect(RfidScan::query()->count())->toBe(1);
+});
+
+test('the duplicate window uses the configured AttendanceRule value, not the hardcoded default', function () {
+    AttendanceRule::factory()->create(['duplicate_window_seconds' => 2]);
+    $device = RfidDevice::factory()->create();
+
+    (new IngestRfidScan)($device, 'ABCD1234', Carbon::now(), 'req-1');
+
+    $this->travel(3)->seconds();
+
+    $second = (new IngestRfidScan)($device, 'ABCD1234', Carbon::now(), 'req-2');
+
+    // 3 seconds have passed, beyond the configured 2-second window, even
+    // though it is within the action's old hardcoded 5-second default.
+    expect($second->classification)->toBe(RfidScanClassification::UnknownCard);
 });
 
 test('the same request_id from a different device is not treated as a replay', function () {

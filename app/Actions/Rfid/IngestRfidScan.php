@@ -3,6 +3,7 @@
 namespace App\Actions\Rfid;
 
 use App\Enums\RfidScanClassification;
+use App\Models\AttendanceRule;
 use App\Models\RfidCard;
 use App\Models\RfidDevice;
 use App\Models\RfidScan;
@@ -10,7 +11,11 @@ use Illuminate\Support\Carbon;
 
 class IngestRfidScan
 {
-    private const DUPLICATE_WINDOW_SECONDS = 5;
+    /**
+     * Used when no school is configured yet (no AttendanceRule row) —
+     * preserves this action's original hardcoded behavior exactly.
+     */
+    private const DEFAULT_DUPLICATE_WINDOW_SECONDS = 5;
 
     public function __invoke(RfidDevice $device, string $uid, Carbon $deviceTimestamp, string $requestId): RfidScan
     {
@@ -34,9 +39,12 @@ class IngestRfidScan
 
     private function classify(string $uid): RfidScanClassification
     {
+        $duplicateWindowSeconds = AttendanceRule::query()->value('duplicate_window_seconds')
+            ?? self::DEFAULT_DUPLICATE_WINDOW_SECONDS;
+
         $withinDuplicateWindow = RfidScan::query()
             ->where('uid', $uid)
-            ->where('created_at', '>=', now()->subSeconds(self::DUPLICATE_WINDOW_SECONDS))
+            ->where('created_at', '>=', now()->subSeconds($duplicateWindowSeconds))
             ->exists();
 
         if ($withinDuplicateWindow) {
