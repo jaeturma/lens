@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Enums\GuardianStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MobileLoginRequest;
 use App\Http\Resources\V1\UserResource;
@@ -27,6 +28,10 @@ class LoginController extends Controller
 
         if (! $user->isGuardian()) {
             return ApiResponse::error('This account is not enabled for mobile login.', [], 403);
+        }
+
+        if ($user->guardian && $user->guardian->status === GuardianStatus::Inactive) {
+            return ApiResponse::error('This account is inactive. Please contact the school.', [], 403);
         }
 
         $token = $user->createToken('mobile')->plainTextToken;

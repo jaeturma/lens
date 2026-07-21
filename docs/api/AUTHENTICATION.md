@@ -56,6 +56,10 @@ school-bound.
 - Valid credentials for a non-guardian account (System/School Administrator):
   `403`, standard Error envelope. Only `guardian`-role accounts may obtain a
   mobile token.
+- Valid credentials for a guardian whose `Guardian` profile status is
+  `inactive`: `403`, standard Error envelope. A guardian-role account with
+  no `Guardian` profile yet is unaffected — a profile is not required to log
+  in, only one that explicitly says inactive is rejected (see WP-02-02).
 - School in maintenance: `503`, `message` is the school's configured
   maintenance message.
 - Mobile access disabled for the school: `503`.

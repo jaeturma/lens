@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\GuardianStatus;
+use App\Models\Guardian;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
@@ -109,6 +111,48 @@ test('a non-guardian account is rejected from mobile login', function () {
 
     $response->assertStatus(403)->assertJson(['success' => false]);
     expect($user->fresh()->tokens()->count())->toBe(0);
+});
+
+test('a guardian account with no profile yet can still log in', function () {
+    bindSchool();
+    $user = User::factory()->create(['password' => Hash::make('correct-password')]);
+
+    $response = $this->postJson('/api/v1/auth/login', [
+        'school_id' => 'SCH-0001',
+        'email' => $user->email,
+        'password' => 'correct-password',
+    ]);
+
+    $response->assertOk();
+});
+
+test('an inactive guardian is rejected from mobile login', function () {
+    bindSchool();
+    $user = User::factory()->create(['password' => Hash::make('correct-password')]);
+    Guardian::factory()->for($user)->create(['status' => GuardianStatus::Inactive]);
+
+    $response = $this->postJson('/api/v1/auth/login', [
+        'school_id' => 'SCH-0001',
+        'email' => $user->email,
+        'password' => 'correct-password',
+    ]);
+
+    $response->assertStatus(403)->assertJson(['success' => false]);
+    expect($user->fresh()->tokens()->count())->toBe(0);
+});
+
+test('an active guardian with a profile can log in', function () {
+    bindSchool();
+    $user = User::factory()->create(['password' => Hash::make('correct-password')]);
+    Guardian::factory()->for($user)->create(['status' => GuardianStatus::Active]);
+
+    $response = $this->postJson('/api/v1/auth/login', [
+        'school_id' => 'SCH-0001',
+        'email' => $user->email,
+        'password' => 'correct-password',
+    ]);
+
+    $response->assertOk();
 });
 
 test('the mobile login endpoint is rate limited', function () {

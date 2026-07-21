@@ -137,6 +137,29 @@ latest entry for a given `resource_id`. No admin UI (WP-02-04) or
 guardian-facing endpoint (WP-02-06) exists yet to create students through;
 this is the data model and its sync participation only.
 
+### `guardian` (WP-02-02)
+
+Same pattern via `App\Observers\GuardianObserver`. Payload:
+
+```json
+{
+  "uuid": "...",
+  "name": "Maria Dela Cruz",
+  "email": "maria@example.com",
+  "mobile_number": "09171234567",
+  "status": "active",
+  "notify_attendance": true,
+  "notify_announcements": true
+}
+```
+
+`email`/`name` here are the guardian's own contact fields on the `guardians`
+table, distinct from `User.email` (the login credential returned by
+`bootstrap`'s `user` field) — see WP-02-02 Implementation Notes for why
+these are not the same column. No admin UI (WP-02-05) creates a `Guardian`
+profile yet; today the only place `status` has an effect is
+`docs/api/AUTHENTICATION.md`'s login rejection for an inactive profile.
+
 ## Not Yet Implemented
 
 Guardian-scoped resource authorization — limiting `changes` to a specific

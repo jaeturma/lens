@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Guardian;
 use App\Models\School;
 use App\Models\Student;
 use Carbon\CarbonImmutable;
@@ -46,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::morphMap([
             'school' => School::class,
             'student' => Student::class,
+            'guardian' => Guardian::class,
         ]);
     }
 
