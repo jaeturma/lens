@@ -208,4 +208,44 @@ void main() {
 
     await disposeAppUnderTest(tester);
   });
+
+  testWidgets(
+    'the notifications action shows an unread badge and opens the inbox',
+    (tester) async {
+      final database = await _seedBoundSchool();
+      await database.notificationsDao.upsert(
+        NotificationsCompanion.insert(
+          uuid: 'notification-uuid',
+          type: 'attendance.arrival',
+          title: 'Arrived at school',
+          body: 'Juan arrived at 7:05 AM.',
+          deliveryStatus: 'sent',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(database),
+            appVersionProvider.overrideWith((ref) async => '0.1.0'),
+            sessionControllerProvider.overrideWith(
+              FakeAuthenticatedSession.new,
+            ),
+            syncApiProvider.overrideWithValue(NoOpSyncApi()),
+          ],
+          child: const LensApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Notifications'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Arrived at school'), findsOneWidget);
+
+      await disposeAppUnderTest(tester);
+    },
+  );
 }

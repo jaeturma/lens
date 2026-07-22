@@ -8,6 +8,7 @@ import '../../../core/school_timezone.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../auth/application/session_controller.dart';
+import '../../notifications/application/notifications_provider.dart';
 import '../../sync/application/sync_engine.dart';
 import '../../sync/application/sync_state_provider.dart';
 import '../../sync/presentation/sync_status_banner.dart';
@@ -34,6 +35,7 @@ class HomePage extends ConsumerWidget {
     final today = todayIn(school.timezone);
     final children = ref.watch(linkedChildrenProvider(today));
     final syncState = ref.watch(syncStateProvider);
+    final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -49,6 +51,15 @@ class HomePage extends ConsumerWidget {
               )
             : null,
         actions: [
+          IconButton(
+            icon: Badge(
+              label: Text('$unreadCount'),
+              isLabelVisible: unreadCount > 0,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            tooltip: 'Notifications',
+            onPressed: () => context.push(AppRoutes.notifications),
+          ),
           IconButton(
             icon: const Icon(Icons.campaign_outlined),
             tooltip: 'Announcements',

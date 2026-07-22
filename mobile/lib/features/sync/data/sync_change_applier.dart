@@ -228,6 +228,7 @@ class SyncChangeApplier {
     await _database.notificationsDao.upsert(
       NotificationsCompanion.insert(
         uuid: uuid,
+        serverId: Value(entry.resourceId),
         type: entry.payload['type'] as String,
         title: entry.payload['title'] as String,
         body: entry.payload['body'] as String,

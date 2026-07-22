@@ -157,6 +157,13 @@ class Announcements extends Table {
 @DataClassName('NotificationRow')
 class Notifications extends Table {
   TextColumn get uuid => text()();
+  // The server's own sync_changes-ordered id (`entry.resourceId`) — the
+  // only signal available for "newest first" ordering, since the payload
+  // carries no created-at timestamp of its own (`GuardianNotificationObserver`
+  // never emits one). Nullable for the same reason as `Students.serverId`,
+  // even though every row here in practice always has it set by
+  // `SyncChangeApplier` (notifications never arrive via bootstrap).
+  IntColumn get serverId => integer().nullable()();
   TextColumn get type => text()();
   TextColumn get title => text()();
   TextColumn get body => text()();

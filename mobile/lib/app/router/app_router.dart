@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/announcements/presentation/announcement_detail_page.dart';
 import '../../features/announcements/presentation/announcements_page.dart';
 import '../../features/attendance/presentation/attendance_history_page.dart';
+import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/school_setup/presentation/school_binding_gate.dart';
 
 abstract final class AppRoutes {
@@ -11,6 +12,7 @@ abstract final class AppRoutes {
   static const attendanceHistory = '/attendance/:studentUuid';
   static const announcements = '/announcements';
   static const announcementDetail = '/announcements/:announcementUuid';
+  static const notifications = '/notifications';
 
   static String attendanceHistoryPath(String studentUuid) =>
       '/attendance/$studentUuid';
@@ -42,6 +44,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => AnnouncementDetailPage(
           announcementUuid: state.pathParameters['announcementUuid']!,
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationsPage(),
       ),
     ],
   );

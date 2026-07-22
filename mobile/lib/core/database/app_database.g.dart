@@ -3473,6 +3473,17 @@ class $NotificationsTable extends Notifications
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<int> serverId = GeneratedColumn<int>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
@@ -3534,6 +3545,7 @@ class $NotificationsTable extends Notifications
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
+    serverId,
     type,
     title,
     body,
@@ -3560,6 +3572,12 @@ class $NotificationsTable extends Notifications
       );
     } else if (isInserting) {
       context.missing(_uuidMeta);
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
     }
     if (data.containsKey('type')) {
       context.handle(
@@ -3621,6 +3639,10 @@ class $NotificationsTable extends Notifications
         DriftSqlType.string,
         data['${effectivePrefix}uuid'],
       )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_id'],
+      ),
       type: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}type'],
@@ -3656,6 +3678,7 @@ class $NotificationsTable extends Notifications
 
 class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   final String uuid;
+  final int? serverId;
   final String type;
   final String title;
   final String body;
@@ -3664,6 +3687,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   final String deliveryStatus;
   const NotificationRow({
     required this.uuid,
+    this.serverId,
     required this.type,
     required this.title,
     required this.body,
@@ -3675,6 +3699,9 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['uuid'] = Variable<String>(uuid);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<int>(serverId);
+    }
     map['type'] = Variable<String>(type);
     map['title'] = Variable<String>(title);
     map['body'] = Variable<String>(body);
@@ -3691,6 +3718,9 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   NotificationsCompanion toCompanion(bool nullToAbsent) {
     return NotificationsCompanion(
       uuid: Value(uuid),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
       type: Value(type),
       title: Value(title),
       body: Value(body),
@@ -3711,6 +3741,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return NotificationRow(
       uuid: serializer.fromJson<String>(json['uuid']),
+      serverId: serializer.fromJson<int?>(json['serverId']),
       type: serializer.fromJson<String>(json['type']),
       title: serializer.fromJson<String>(json['title']),
       body: serializer.fromJson<String>(json['body']),
@@ -3724,6 +3755,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'uuid': serializer.toJson<String>(uuid),
+      'serverId': serializer.toJson<int?>(serverId),
       'type': serializer.toJson<String>(type),
       'title': serializer.toJson<String>(title),
       'body': serializer.toJson<String>(body),
@@ -3735,6 +3767,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
 
   NotificationRow copyWith({
     String? uuid,
+    Value<int?> serverId = const Value.absent(),
     String? type,
     String? title,
     String? body,
@@ -3743,6 +3776,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
     String? deliveryStatus,
   }) => NotificationRow(
     uuid: uuid ?? this.uuid,
+    serverId: serverId.present ? serverId.value : this.serverId,
     type: type ?? this.type,
     title: title ?? this.title,
     body: body ?? this.body,
@@ -3753,6 +3787,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   NotificationRow copyWithCompanion(NotificationsCompanion data) {
     return NotificationRow(
       uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
       type: data.type.present ? data.type.value : this.type,
       title: data.title.present ? data.title.value : this.title,
       body: data.body.present ? data.body.value : this.body,
@@ -3768,6 +3803,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   String toString() {
     return (StringBuffer('NotificationRow(')
           ..write('uuid: $uuid, ')
+          ..write('serverId: $serverId, ')
           ..write('type: $type, ')
           ..write('title: $title, ')
           ..write('body: $body, ')
@@ -3779,13 +3815,22 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(uuid, type, title, body, payload, readAt, deliveryStatus);
+  int get hashCode => Object.hash(
+    uuid,
+    serverId,
+    type,
+    title,
+    body,
+    payload,
+    readAt,
+    deliveryStatus,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is NotificationRow &&
           other.uuid == this.uuid &&
+          other.serverId == this.serverId &&
           other.type == this.type &&
           other.title == this.title &&
           other.body == this.body &&
@@ -3796,6 +3841,7 @@ class NotificationRow extends DataClass implements Insertable<NotificationRow> {
 
 class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   final Value<String> uuid;
+  final Value<int?> serverId;
   final Value<String> type;
   final Value<String> title;
   final Value<String> body;
@@ -3805,6 +3851,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   final Value<int> rowid;
   const NotificationsCompanion({
     this.uuid = const Value.absent(),
+    this.serverId = const Value.absent(),
     this.type = const Value.absent(),
     this.title = const Value.absent(),
     this.body = const Value.absent(),
@@ -3815,6 +3862,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   });
   NotificationsCompanion.insert({
     required String uuid,
+    this.serverId = const Value.absent(),
     required String type,
     required String title,
     required String body,
@@ -3829,6 +3877,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
        deliveryStatus = Value(deliveryStatus);
   static Insertable<NotificationRow> custom({
     Expression<String>? uuid,
+    Expression<int>? serverId,
     Expression<String>? type,
     Expression<String>? title,
     Expression<String>? body,
@@ -3839,6 +3888,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   }) {
     return RawValuesInsertable({
       if (uuid != null) 'uuid': uuid,
+      if (serverId != null) 'server_id': serverId,
       if (type != null) 'type': type,
       if (title != null) 'title': title,
       if (body != null) 'body': body,
@@ -3851,6 +3901,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
 
   NotificationsCompanion copyWith({
     Value<String>? uuid,
+    Value<int?>? serverId,
     Value<String>? type,
     Value<String>? title,
     Value<String>? body,
@@ -3861,6 +3912,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   }) {
     return NotificationsCompanion(
       uuid: uuid ?? this.uuid,
+      serverId: serverId ?? this.serverId,
       type: type ?? this.type,
       title: title ?? this.title,
       body: body ?? this.body,
@@ -3876,6 +3928,9 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
     final map = <String, Expression>{};
     if (uuid.present) {
       map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<int>(serverId.value);
     }
     if (type.present) {
       map['type'] = Variable<String>(type.value);
@@ -3905,6 +3960,7 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   String toString() {
     return (StringBuffer('NotificationsCompanion(')
           ..write('uuid: $uuid, ')
+          ..write('serverId: $serverId, ')
           ..write('type: $type, ')
           ..write('title: $title, ')
           ..write('body: $body, ')
@@ -6464,6 +6520,7 @@ typedef $$AnnouncementsTableProcessedTableManager =
 typedef $$NotificationsTableCreateCompanionBuilder =
     NotificationsCompanion Function({
       required String uuid,
+      Value<int?> serverId,
       required String type,
       required String title,
       required String body,
@@ -6475,6 +6532,7 @@ typedef $$NotificationsTableCreateCompanionBuilder =
 typedef $$NotificationsTableUpdateCompanionBuilder =
     NotificationsCompanion Function({
       Value<String> uuid,
+      Value<int?> serverId,
       Value<String> type,
       Value<String> title,
       Value<String> body,
@@ -6495,6 +6553,11 @@ class $$NotificationsTableFilterComposer
   });
   ColumnFilters<String> get uuid => $composableBuilder(
     column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6543,6 +6606,11 @@ class $$NotificationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get type => $composableBuilder(
     column: $table.type,
     builder: (column) => ColumnOrderings(column),
@@ -6585,6 +6653,9 @@ class $$NotificationsTableAnnotationComposer
   });
   GeneratedColumn<String> get uuid =>
       $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<int> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
 
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
@@ -6639,6 +6710,7 @@ class $$NotificationsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> uuid = const Value.absent(),
+                Value<int?> serverId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> body = const Value.absent(),
@@ -6648,6 +6720,7 @@ class $$NotificationsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => NotificationsCompanion(
                 uuid: uuid,
+                serverId: serverId,
                 type: type,
                 title: title,
                 body: body,
@@ -6659,6 +6732,7 @@ class $$NotificationsTableTableManager
           createCompanionCallback:
               ({
                 required String uuid,
+                Value<int?> serverId = const Value.absent(),
                 required String type,
                 required String title,
                 required String body,
@@ -6668,6 +6742,7 @@ class $$NotificationsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => NotificationsCompanion.insert(
                 uuid: uuid,
+                serverId: serverId,
                 type: type,
                 title: title,
                 body: body,

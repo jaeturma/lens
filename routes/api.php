@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Notifications\MarkNotificationReadController;
 use App\Http\Controllers\Api\V1\Notifications\RegisterDeviceTokenController;
 use App\Http\Controllers\Api\V1\Notifications\RevokeDeviceTokenController;
 use App\Http\Controllers\Api\V1\ResolveSchoolController;
@@ -41,5 +42,7 @@ Route::prefix('v1')->group(function (): void {
     Route::prefix('notifications')->middleware(['auth:sanctum', 'school.mobile', 'throttle:device-tokens'])->group(function (): void {
         Route::post('device-tokens', RegisterDeviceTokenController::class);
         Route::delete('device-tokens', RevokeDeviceTokenController::class);
+        Route::patch('{uuid}/read', MarkNotificationReadController::class)
+            ->where('uuid', '[0-9a-fA-F-]{36}');
     });
 });

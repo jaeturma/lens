@@ -98,6 +98,85 @@ void main() {
     },
   );
 
+  test('notifications are watched newest-first by serverId', () async {
+    await database.notificationsDao.upsert(
+      NotificationsCompanion.insert(
+        uuid: 'older',
+        serverId: const Value(1),
+        type: 'attendance.arrival',
+        title: 'Arrived at school',
+        body: 'Juan arrived at 7:05 AM.',
+        deliveryStatus: 'sent',
+      ),
+    );
+    await database.notificationsDao.upsert(
+      NotificationsCompanion.insert(
+        uuid: 'newer',
+        serverId: const Value(2),
+        type: 'attendance.departure',
+        title: 'Left school',
+        body: 'Juan left at 4:05 PM.',
+        deliveryStatus: 'sent',
+      ),
+    );
+
+    final rows = await database.notificationsDao.watchAll().first;
+    expect(rows.map((row) => row.uuid), ['newer', 'older']);
+  });
+
+  test('the unread notification count reflects only unread rows', () async {
+    await database.notificationsDao.upsert(
+      NotificationsCompanion.insert(
+        uuid: 'unread',
+        type: 'attendance.arrival',
+        title: 'Arrived at school',
+        body: 'Juan arrived at 7:05 AM.',
+        deliveryStatus: 'sent',
+      ),
+    );
+    await database.notificationsDao.upsert(
+      NotificationsCompanion.insert(
+        uuid: 'read',
+        type: 'attendance.departure',
+        title: 'Left school',
+        body: 'Juan left at 4:05 PM.',
+        readAt: Value(DateTime.utc(2026, 7, 22)),
+        deliveryStatus: 'sent',
+      ),
+    );
+
+    expect(await database.notificationsDao.watchUnreadCount().first, 1);
+  });
+
+  test('marking a notification read locally is instant and idempotent — a '
+      'second call leaves the first read_at untouched', () async {
+    await database.notificationsDao.upsert(
+      NotificationsCompanion.insert(
+        uuid: 'notification-uuid',
+        type: 'attendance.arrival',
+        title: 'Arrived at school',
+        body: 'Juan arrived at 7:05 AM.',
+        deliveryStatus: 'sent',
+      ),
+    );
+
+    await database.notificationsDao.markReadLocally('notification-uuid');
+    final firstReadAt =
+        (await (database.select(database.notifications)
+                  ..where((row) => row.uuid.equals('notification-uuid')))
+                .getSingle())
+            .readAt;
+    expect(firstReadAt, isNotNull);
+
+    await database.notificationsDao.markReadLocally('notification-uuid');
+    final secondReadAt =
+        (await (database.select(database.notifications)
+                  ..where((row) => row.uuid.equals('notification-uuid')))
+                .getSingle())
+            .readAt;
+    expect(secondReadAt, firstReadAt);
+  });
+
   test(
     'an attendance record upserts by (student, date) rather than duplicating, '
     'even though its own primary key is a local autoincrement id',

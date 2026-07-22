@@ -20,6 +20,7 @@ void main() {
       AppRoutes.attendanceHistory,
       AppRoutes.announcements,
       AppRoutes.announcementDetail,
+      AppRoutes.notifications,
     ]);
   });
 }

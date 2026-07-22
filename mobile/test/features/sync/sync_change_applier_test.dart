@@ -525,6 +525,7 @@ void main() {
 
         final row = await database.select(database.notifications).getSingle();
         expect(row.uuid, 'notification-uuid');
+        expect(row.serverId, 11);
         expect(row.payload, '{"student_id":42}');
         expect(row.readAt, isNull);
       },

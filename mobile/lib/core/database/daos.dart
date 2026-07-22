@@ -244,7 +244,23 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase>
     with _$NotificationsDaoMixin {
   NotificationsDao(super.db);
 
-  Stream<List<NotificationRow>> watchAll() => select(notifications).watch();
+  /// Newest first, by the server's own ordering (`serverId`) — there is no
+  /// local timestamp to sort by instead (see the table's own doc comment).
+  Stream<List<NotificationRow>> watchAll() {
+    return (select(
+      notifications,
+    )..orderBy([(row) => OrderingTerm.desc(row.serverId)])).watch();
+  }
+
+  Stream<int> watchUnreadCount() {
+    final query = selectOnly(notifications)
+      ..addColumns([notifications.uuid.count()])
+      ..where(notifications.readAt.isNull());
+
+    return query.watchSingle().map(
+      (row) => row.read(notifications.uuid.count()) ?? 0,
+    );
+  }
 
   Future<void> upsert(NotificationsCompanion entry) {
     return into(notifications).insertOnConflictUpdate(entry);
@@ -252,6 +268,19 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> deleteByUuid(String uuid) {
     return (delete(notifications)..where((row) => row.uuid.equals(uuid))).go();
+  }
+
+  /// Local-first read state (WP-07-12): sets `read_at` immediately so the
+  /// inbox reflects a tap instantly, offline or not — the server call is a
+  /// separate, best-effort step (`NotificationsController.markRead`). Only
+  /// writes when currently unread, the same idempotent shape as the
+  /// server's own `MarkNotificationRead` action, so a repeat tap (or the
+  /// server's own sync entry arriving afterward) is a no-op rather than
+  /// bumping anything again.
+  Future<void> markReadLocally(String uuid) {
+    return (update(notifications)
+          ..where((row) => row.uuid.equals(uuid) & row.readAt.isNull()))
+        .write(NotificationsCompanion(readAt: Value(DateTime.now())));
   }
 }
 
