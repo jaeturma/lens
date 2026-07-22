@@ -147,7 +147,13 @@ device isn't told; classification is server-side bookkeeping (see below).
    `(rfid_device_id, request_id)` pair, that existing row is returned
    as-is — no new row, no reclassification. A device retry (e.g. after a
    dropped response) must not produce a second raw record, since it isn't
-   a second real-world tap.
+   a second real-world tap. A unique index on `(rfid_device_id,
+   request_id)` (WP-08-04) is the actual backstop for this: two
+   near-simultaneous replays of the same request can both pass the check
+   above before either commits, so the guarantee is enforced at the
+   database, not the check — whichever request loses the resulting
+   `UniqueConstraintViolationException` re-fetches and returns the
+   winner's row rather than erroring or creating a duplicate.
 2. Otherwise a new row is always created (`rfid_scans.classification`):
    - `duplicate_window`: the same `uid` (any device) was already scanned
      in the last 5 seconds — almost certainly one physical tap read

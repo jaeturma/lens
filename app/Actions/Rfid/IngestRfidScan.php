@@ -7,6 +7,7 @@ use App\Models\AttendanceRule;
 use App\Models\RfidCard;
 use App\Models\RfidDevice;
 use App\Models\RfidScan;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 
 class IngestRfidScan
@@ -28,13 +29,32 @@ class IngestRfidScan
             return $existing;
         }
 
-        return RfidScan::create([
-            'rfid_device_id' => $device->id,
-            'uid' => $uid,
-            'device_timestamp' => $deviceTimestamp,
-            'request_id' => $requestId,
-            'classification' => $this->classify($uid),
-        ]);
+        // Two near-simultaneous replays of the same request (a device
+        // retrying after a timed-out response, under real concurrency) can
+        // both reach here having found nothing above — the unique index on
+        // (rfid_device_id, request_id) is what actually prevents a
+        // duplicate raw record; whichever request loses the race returns
+        // the winner's row instead of erroring or duplicating.
+        // Two near-simultaneous replays of the same request (a device
+        // retrying after a timed-out response, under real concurrency) can
+        // both reach here having found nothing above — the unique index on
+        // (rfid_device_id, request_id) is what actually prevents a
+        // duplicate raw record; whichever request loses the race returns
+        // the winner's row instead of erroring or duplicating.
+        try {
+            return RfidScan::create([
+                'rfid_device_id' => $device->id,
+                'uid' => $uid,
+                'device_timestamp' => $deviceTimestamp,
+                'request_id' => $requestId,
+                'classification' => $this->classify($uid),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            return RfidScan::query()
+                ->where('rfid_device_id', $device->id)
+                ->where('request_id', $requestId)
+                ->firstOrFail();
+        }
     }
 
     private function classify(string $uid): RfidScanClassification

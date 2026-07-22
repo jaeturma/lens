@@ -9,6 +9,7 @@ use App\Models\RfidDevice;
 use App\Models\RfidScan;
 use App\Models\Student;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 test('a scan for an actively assigned card is classified valid', function () {
     $device = RfidDevice::factory()->create();
@@ -86,6 +87,40 @@ test('the duplicate window uses the configured AttendanceRule value, not the har
     // though it is within the action's old hardcoded 5-second default.
     expect($second->classification)->toBe(RfidScanClassification::UnknownCard);
 });
+
+test('a concurrent request committing the same device+request_id between this '
+    .'request\'s replay check and its own insert is handled without erroring or '
+    .'duplicating (WP-08-04)', function () {
+        $device = RfidDevice::factory()->create();
+
+        // Reproduces exactly the race the replay check alone cannot close: a
+        // single test process can't run two real concurrent requests, so a
+        // one-off `creating` listener inserts the "other request"'s row via a
+        // raw statement (bypassing Eloquent, so it can't recurse into this
+        // same listener) at the precise moment this action's own insert is
+        // about to happen — after its replay check already ran and found
+        // nothing.
+        RfidScan::creating(function () use ($device) {
+            DB::table('rfid_scans')->insert([
+                'rfid_device_id' => $device->id,
+                'uid' => 'ABCD1234',
+                'device_timestamp' => now(),
+                'request_id' => 'req-race',
+                'classification' => RfidScanClassification::UnknownCard->value,
+                'created_at' => now(),
+            ]);
+        });
+
+        $scan = (new IngestRfidScan)($device, 'ABCD1234', Carbon::now(), 'req-race');
+
+        expect($scan->request_id)->toBe('req-race');
+        expect(
+            RfidScan::query()
+                ->where('rfid_device_id', $device->id)
+                ->where('request_id', 'req-race')
+                ->count()
+        )->toBe(1);
+    });
 
 test('the same request_id from a different device is not treated as a replay', function () {
     $deviceA = RfidDevice::factory()->create();
