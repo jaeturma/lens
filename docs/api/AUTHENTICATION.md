@@ -69,7 +69,10 @@ school-bound.
 ## Current User
 
 `GET /api/v1/auth/me` — requires a valid Sanctum bearer token
-(`Authorization: Bearer {token}`). Returns the authenticated user via the
+(`Authorization: Bearer {token}`), rate limited (`account`: 60
+requests/minute per user, WP-08-06 — every other authenticated mobile
+endpoint already had a limiter; this and `logout` were the two gaps).
+Returns the authenticated user via the
 same shape as `login`'s `user` field. `401` if the token is missing,
 invalid, already revoked, or (`guardian.active` middleware, WP-08-03)
 belongs to a guardian whose `Guardian` profile has since been deactivated
@@ -86,10 +89,11 @@ guardian's token is rejected there too, not only at `/auth/me`.
 
 ## Logout
 
-`POST /api/v1/auth/logout` — requires a valid Sanctum bearer token, but
-**not** `guardian.active` — a deactivated guardian can still explicitly
-revoke their own token. Revokes the token used to make the request (not
-other active tokens/devices).
+`POST /api/v1/auth/logout` — requires a valid Sanctum bearer token and the
+same `account` rate limiter as `auth/me`, but **not** `guardian.active` —
+a deactivated guardian can still explicitly revoke their own token.
+Revokes the token used to make the request (not other active
+tokens/devices).
 
 ## App Version Header
 

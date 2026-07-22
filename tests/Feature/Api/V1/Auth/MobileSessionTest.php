@@ -40,3 +40,14 @@ test('a revoked token can no longer authenticate', function () {
     $this->withToken($token)->getJson('/api/v1/auth/me')
         ->assertStatus(401);
 });
+
+test('auth/me is rate limited per user (WP-08-06)', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+
+    for ($i = 0; $i < 60; $i++) {
+        $this->withToken($token)->getJson('/api/v1/auth/me')->assertOk();
+    }
+
+    $this->withToken($token)->getJson('/api/v1/auth/me')->assertStatus(429);
+});

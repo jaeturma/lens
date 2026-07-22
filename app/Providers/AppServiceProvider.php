@@ -89,6 +89,17 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('device-tokens', function (Request $request): Limit {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
+
+        // WP-08-06: `auth/me` and `auth/logout` were the only two
+        // authenticated mobile endpoints with no rate limiter at all — every
+        // other one (sync, device-tokens, rfid-scan) has one. A valid
+        // Sanctum token is already required either way, but an
+        // unthrottled authenticated endpoint is still an unbounded
+        // resource-exhaustion surface for a compromised or misbehaving
+        // client.
+        RateLimiter::for('account', function (Request $request): Limit {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     /**

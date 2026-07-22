@@ -24,7 +24,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('login', LoginController::class)
             ->middleware(['school.mobile', 'throttle:mobile-login']);
 
-        Route::middleware('auth:sanctum')->group(function (): void {
+        Route::middleware(['auth:sanctum', 'throttle:account'])->group(function (): void {
             Route::get('me', MeController::class)->middleware('guardian.active');
             Route::post('logout', LogoutController::class);
         });

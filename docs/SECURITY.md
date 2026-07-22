@@ -7,8 +7,7 @@ tenancy). Initial-release roles and their boundaries:
 
 | Role | Account Type | Scope | Excluded |
 |---|---|---|---|
-| System Administrator | Laravel web user | Full access to this installation: school configuration, administrator accounts, RFID device registry, system-level settings. | N/A |
-| School Administrator | Laravel web user | Operational access to school data: students, guardians, RFID card assignment, attendance, announcements. | Cannot manage administrator accounts or system-level settings. |
+| System Administrator / School Administrator | Laravel web user | Full operational access to this installation's school data: students, guardians, RFID device registry, RFID card assignment, attendance, announcements. Every `App\Policies\*` check in this release gates on a single `User::isAdministrator()` (true for both roles) — the two `UserRole` cases exist and are seeded distinctly (`database/seeders/DatabaseSeeder.php`) for a future release's finer-grained split, but no policy, controller, or route in this release actually distinguishes them (confirmed WP-08-06: e.g. `RfidDeviceAdministrationTest.php` deliberately tests device registry management with a plain School Administrator). Administrator-account management and other system-level settings screens are not built in this release at all — there is nothing yet for a split to gate. | No web administration access for a Parent/Guardian account. |
 | Parent/Guardian | Mobile Sanctum-authenticated user | Read access, via the mobile API only, to their own active linked students: attendance, announcements, notifications. | No web administration access. No access to unlinked or inactive student links. |
 | RFID Device | Not a user account | Authenticates with a dedicated device credential (see below) to submit raw scan events only. | Cannot log in as a user. No access to any endpoint other than scan ingestion. |
 
