@@ -10,6 +10,7 @@ use App\Enums\SyncChangeAction;
 use App\Models\Announcement;
 use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
+use App\Models\GuardianNotification;
 use App\Models\GuardianStudentLink;
 use App\Models\School;
 use App\Models\Student;
@@ -190,6 +191,39 @@ test('an announcement change with no guardian is never visible', function () {
     $announcement = Announcement::factory()->create(['status' => AnnouncementStatus::Draft, 'audience_type' => AnnouncementAudienceType::All]);
     (new PublishAnnouncement)($announcement);
     $change = SyncChange::query()->where('resource_type', 'announcement')->where('resource_id', $announcement->id)->firstOrFail();
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), null);
+
+    expect($scoped)->toBeEmpty();
+});
+
+test('a guardian_notification change is visible to its own guardian', function () {
+    $guardian = Guardian::factory()->create();
+    $notification = GuardianNotification::factory()->for($guardian)->create();
+
+    $change = SyncChange::query()->where('resource_type', 'guardian_notification')->where('resource_id', $notification->id)->firstOrFail();
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
+
+    expect($scoped)->toHaveCount(1);
+});
+
+test('a guardian_notification change is not visible to a different guardian', function () {
+    $owner = Guardian::factory()->create();
+    $otherGuardian = Guardian::factory()->create();
+    $notification = GuardianNotification::factory()->for($owner)->create();
+
+    $change = SyncChange::query()->where('resource_type', 'guardian_notification')->where('resource_id', $notification->id)->firstOrFail();
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $otherGuardian);
+
+    expect($scoped)->toBeEmpty();
+});
+
+test('a guardian_notification change with no guardian is never visible', function () {
+    $notification = GuardianNotification::factory()->create();
+
+    $change = SyncChange::query()->where('resource_type', 'guardian_notification')->where('resource_id', $notification->id)->firstOrFail();
 
     $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), null);
 

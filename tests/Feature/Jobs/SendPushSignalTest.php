@@ -5,8 +5,10 @@ use App\Enums\NotificationDeliveryStatus;
 use App\Jobs\SendPushSignal;
 use App\Models\DeviceToken;
 use App\Models\GuardianNotification;
+use App\Models\PushDeliveryAttempt;
 use Illuminate\Support\Facades\Queue;
 use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Exception\Messaging\NotFound;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\MessageTarget;
 use Kreait\Firebase\Messaging\MulticastSendReport;
@@ -95,6 +97,75 @@ test('the push payload carries no title, body, or attendance/announcement conten
         ]));
 
     (new SendPushSignal($notification))->handle($messaging);
+});
+
+test('a successful attempt is logged with the current attempt number', function () {
+    $notification = GuardianNotification::factory()->create();
+    DeviceToken::factory()->for($notification->guardian)->create(['status' => DeviceTokenStatus::Active]);
+
+    $messaging = Mockery::mock(Messaging::class);
+    $messaging->shouldReceive('sendMulticast')->once()->andReturn(MulticastSendReport::withItems([
+        SendReport::success(MessageTarget::with(MessageTarget::TOKEN, 'a-token'), []),
+    ]));
+
+    (new SendPushSignal($notification))->handle($messaging);
+
+    $attempt = PushDeliveryAttempt::query()->where('guardian_notification_id', $notification->id)->firstOrFail();
+    expect($attempt->attempt_number)->toBe(1);
+    expect($attempt->succeeded)->toBeTrue();
+    expect($attempt->error_message)->toBeNull();
+});
+
+test('a failed attempt is logged with the error message, and attempt numbers increment across retries', function () {
+    $notification = GuardianNotification::factory()->create();
+    DeviceToken::factory()->for($notification->guardian)->create(['status' => DeviceTokenStatus::Active]);
+
+    $failingMessaging = Mockery::mock(Messaging::class);
+    $failingMessaging->shouldReceive('sendMulticast')->once()->andThrow(new RuntimeException('Firebase unreachable'));
+    (new SendPushSignal($notification))->handle($failingMessaging);
+
+    $succeedingMessaging = Mockery::mock(Messaging::class);
+    $succeedingMessaging->shouldReceive('sendMulticast')->once()->andReturn(MulticastSendReport::withItems([
+        SendReport::success(MessageTarget::with(MessageTarget::TOKEN, 'a-token'), []),
+    ]));
+    (new SendPushSignal($notification))->handle($succeedingMessaging);
+
+    $attempts = PushDeliveryAttempt::query()->where('guardian_notification_id', $notification->id)->orderBy('attempt_number')->get();
+    expect($attempts)->toHaveCount(2);
+    expect($attempts[0]->attempt_number)->toBe(1);
+    expect($attempts[0]->succeeded)->toBeFalse();
+    expect($attempts[0]->error_message)->toBe('Firebase unreachable');
+    expect($attempts[1]->attempt_number)->toBe(2);
+    expect($attempts[1]->succeeded)->toBeTrue();
+});
+
+test('a token Firebase reports as not found is deactivated, safely — only that token, not the others', function () {
+    $notification = GuardianNotification::factory()->create();
+    $bad = DeviceToken::factory()->for($notification->guardian)->create(['status' => DeviceTokenStatus::Active, 'token' => 'bad-token']);
+    $good = DeviceToken::factory()->for($notification->guardian)->create(['status' => DeviceTokenStatus::Active, 'token' => 'good-token']);
+
+    $messaging = Mockery::mock(Messaging::class);
+    $messaging->shouldReceive('sendMulticast')->once()->andReturn(MulticastSendReport::withItems([
+        SendReport::failure(MessageTarget::with(MessageTarget::TOKEN, 'bad-token'), NotFound::becauseTokenNotFound('bad-token')),
+        SendReport::success(MessageTarget::with(MessageTarget::TOKEN, 'good-token'), []),
+    ]));
+
+    (new SendPushSignal($notification))->handle($messaging);
+
+    expect($bad->fresh()->status)->toBe(DeviceTokenStatus::Deactivated);
+    expect($good->fresh()->status)->toBe(DeviceTokenStatus::Active);
+});
+
+test('a general delivery exception never deactivates any device token', function () {
+    $notification = GuardianNotification::factory()->create();
+    $deviceToken = DeviceToken::factory()->for($notification->guardian)->create(['status' => DeviceTokenStatus::Active]);
+
+    $messaging = Mockery::mock(Messaging::class);
+    $messaging->shouldReceive('sendMulticast')->once()->andThrow(new RuntimeException('Firebase unreachable'));
+
+    (new SendPushSignal($notification))->handle($messaging);
+
+    expect($deviceToken->fresh()->status)->toBe(DeviceTokenStatus::Active);
 });
 
 test('creating a guardian notification queues the push signal job', function () {

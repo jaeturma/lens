@@ -16,3 +16,7 @@ Schedule::command('attendance:mark-absences')->everyFifteenMinutes();
 // expires_at is an admin-set instant, not a fixed daily time, so this
 // polls frequently rather than running once at a fixed clock time.
 Schedule::command('announcements:expire')->everyFifteenMinutes();
+
+// "Retry state" for push delivery (WP-06-06) — re-checks Failed
+// notifications on the same cadence as the other periodic sweeps above.
+Schedule::command('notifications:retry-failed-push')->everyFifteenMinutes();

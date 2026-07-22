@@ -39,6 +39,11 @@ class ScopeChangesToGuardian
                 // reaches here at all (AnnouncementObserver never records
                 // one), so no status check is needed on top of this.
                 'announcement' => $guardian !== null && $this->guardianMatchesAnnouncement($change, $guardian),
+                // Owned directly by a guardian (guardian_id is set once at
+                // creation and never changes — no audience or link-status
+                // concept applies), so the payload's guardian_id is stable
+                // and safe to check without re-resolving anything live.
+                'guardian_notification' => $guardian !== null && ($change->payload['guardian_id'] ?? null) === $guardian->id,
                 default => false,
             };
         })->values();

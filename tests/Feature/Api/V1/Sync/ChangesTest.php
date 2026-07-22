@@ -9,6 +9,7 @@ use App\Enums\SyncChangeAction;
 use App\Models\Announcement;
 use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
+use App\Models\GuardianNotification;
 use App\Models\GuardianStudentLink;
 use App\Models\School;
 use App\Models\Student;
@@ -212,10 +213,16 @@ test('incremental sync only returns announcement changes matching the guardian\'
     $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
 
     $response->assertOk();
-    $changes = $response->json('data.changes');
-    expect($changes)->toHaveCount(1);
-    expect($changes[0]['resource_id'])->toBe($matchingAnnouncement->id);
-    expect($changes[0]['action'])->toBe('created');
+    // Publishing a matching announcement also creates (and now correctly
+    // syncs) a guardian_notification about it (WP-06-03/06-06) — filtered
+    // out here since this test is specifically about announcement-type
+    // scoping, not notification scoping (covered by its own tests).
+    $announcementChanges = collect($response->json('data.changes'))
+        ->where('resource_type', 'announcement')
+        ->values();
+    expect($announcementChanges)->toHaveCount(1);
+    expect($announcementChanges[0]['resource_id'])->toBe($matchingAnnouncement->id);
+    expect($announcementChanges[0]['action'])->toBe('created');
 });
 
 test('withdrawing an announcement synchronizes as revoked to a matching guardian', function () {
@@ -240,6 +247,27 @@ test('withdrawing an announcement synchronizes as revoked to a matching guardian
     expect($changes)->toHaveCount(1);
     expect($changes[0]['resource_type'])->toBe('announcement');
     expect($changes[0]['action'])->toBe('revoked');
+});
+
+test('incremental sync only returns a guardian\'s own notification changes', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $otherGuardian = Guardian::factory()->create();
+
+    $cursorAfterSetup = SyncCursor::fromSequence((int) SyncChange::query()->max('id'));
+
+    $ownNotification = GuardianNotification::factory()->for($guardian)->create();
+    GuardianNotification::factory()->for($otherGuardian)->create();
+
+    $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
+
+    $response->assertOk();
+    $changes = $response->json('data.changes');
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['resource_type'])->toBe('guardian_notification');
+    expect($changes[0]['resource_id'])->toBe($ownNotification->id);
 });
 
 test('a non-guardian account is rejected from incremental sync', function () {
