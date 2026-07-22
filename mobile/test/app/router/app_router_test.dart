@@ -15,6 +15,6 @@ void main() {
         .map((route) => route.path)
         .toList();
 
-    expect(paths, [AppRoutes.foundation]);
+    expect(paths, [AppRoutes.foundation, AppRoutes.attendanceHistory]);
   });
 }

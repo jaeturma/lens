@@ -71,6 +71,15 @@ class StudentsDao extends DatabaseAccessor<AppDatabase>
 
   Stream<List<Student>> watchAll() => select(students).watch();
 
+  /// For a student-specific screen (e.g. attendance history, WP-07-10)
+  /// reached by `uuid` alone (a route parameter) — reactive, so the screen
+  /// updates in place if the student's own record changes while open.
+  Stream<Student?> watchByUuid(String uuid) {
+    return (select(
+      students,
+    )..where((row) => row.uuid.equals(uuid))).watchSingleOrNull();
+  }
+
   Future<void> upsert(StudentsCompanion entry) {
     return into(students).insertOnConflictUpdate(entry);
   }
@@ -119,10 +128,12 @@ class AttendanceRecordsDao extends DatabaseAccessor<AppDatabase>
     with _$AttendanceRecordsDaoMixin {
   AttendanceRecordsDao(super.db);
 
+  /// Newest first — "child attendance status and history" (WP-07-10).
   Stream<List<AttendanceRecord>> watchForStudent(String studentUuid) {
-    return (select(
-      attendanceRecords,
-    )..where((row) => row.studentUuid.equals(studentUuid))).watch();
+    return (select(attendanceRecords)
+          ..where((row) => row.studentUuid.equals(studentUuid))
+          ..orderBy([(row) => OrderingTerm.desc(row.date)]))
+        .watch();
   }
 
   /// The table's own primary key is a local autoincrement id, not the

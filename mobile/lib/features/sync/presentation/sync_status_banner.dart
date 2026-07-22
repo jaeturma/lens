@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 
 /// "Last sync" and a "stale/offline indicator" (WP-07-09's own Scope
-/// line): a lightweight, non-blocking banner — this app has no live
-/// connectivity check, so "stale" is inferred purely from how long ago
-/// the last successful sync committed, the same 15-minute cadence the
-/// Laravel side's own periodic sweeps use (`routes/console.php`).
+/// line, reused by WP-07-10's attendance history for "sync freshness"): a
+/// lightweight, non-blocking banner — this app has no live connectivity
+/// check, so "stale" is inferred purely from how long ago the last
+/// successful sync committed, the same 15-minute cadence the Laravel
+/// side's own periodic sweeps use (`routes/console.php`).
 class SyncStatusBanner extends StatelessWidget {
   const SyncStatusBanner({required this.syncState, super.key});
 

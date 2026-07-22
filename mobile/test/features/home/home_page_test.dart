@@ -129,7 +129,56 @@ void main() {
     expect(find.text('Juan Dela Cruz'), findsOneWidget);
     expect(find.text('Maria Dela Cruz'), findsOneWidget);
     expect(find.text('No attendance recorded yet today.'), findsOneWidget);
-    expect(find.text('Absent today.'), findsOneWidget);
+    expect(find.text('Absent.'), findsOneWidget);
+
+    await disposeAppUnderTest(tester);
+  });
+
+  testWidgets('tapping a linked child opens their attendance history', (
+    tester,
+  ) async {
+    final database = await _seedBoundSchool();
+
+    await database.studentsDao.upsert(
+      StudentsCompanion.insert(
+        uuid: 'student-1',
+        lrn: '123456789012',
+        studentNumber: 'SN-0001',
+        name: 'Juan Dela Cruz',
+        sex: 'male',
+        grade: 'Grade 7',
+        section: 'Diamond',
+        schoolYear: '2026-2027',
+        status: 'active',
+      ),
+    );
+    await database.guardianStudentLinksDao.upsert(
+      GuardianStudentLinksCompanion.insert(
+        studentUuid: 'student-1',
+        relationshipType: 'mother',
+        isPrimaryContact: true,
+        status: 'active',
+        notificationsEnabled: true,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          appVersionProvider.overrideWith((ref) async => '0.1.0'),
+          sessionControllerProvider.overrideWith(FakeAuthenticatedSession.new),
+          syncApiProvider.overrideWithValue(NoOpSyncApi()),
+        ],
+        child: const LensApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Juan Dela Cruz'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No attendance recorded yet.'), findsOneWidget);
 
     await disposeAppUnderTest(tester);
   });

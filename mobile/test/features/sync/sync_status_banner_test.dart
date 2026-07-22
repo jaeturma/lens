@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/database/app_database.dart';
-import 'package:mobile/features/home/presentation/sync_status_banner.dart';
+import 'package:mobile/features/sync/presentation/sync_status_banner.dart';
 
 Future<void> _pumpBanner(WidgetTester tester, SyncStateData? syncState) {
   return tester.pumpWidget(

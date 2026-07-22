@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router/app_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/school_timezone.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../auth/application/session_controller.dart';
 import '../../sync/application/sync_engine.dart';
+import '../../sync/application/sync_state_provider.dart';
+import '../../sync/presentation/sync_status_banner.dart';
 import '../application/linked_children_provider.dart';
 import 'linked_child_card.dart';
-import 'sync_status_banner.dart';
 
 /// The parent home screen (WP-07-09) — "screens render without live API":
 /// every piece of this screen (linked children, today's status, last
@@ -74,7 +77,16 @@ class HomePage extends ConsumerWidget {
                         ? const _EmptyChildrenView()
                         : Column(
                             children: value
-                                .map((child) => LinkedChildCard(child: child))
+                                .map(
+                                  (child) => LinkedChildCard(
+                                    child: child,
+                                    onTap: () => context.push(
+                                      AppRoutes.attendanceHistoryPath(
+                                        child.student.uuid,
+                                      ),
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                           ),
                   AsyncError() => const AppErrorView(
