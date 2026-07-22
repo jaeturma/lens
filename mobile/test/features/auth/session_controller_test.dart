@@ -9,6 +9,8 @@ import 'package:mobile/core/network/api_exception.dart';
 import 'package:mobile/core/storage/token_storage.dart';
 import 'package:mobile/features/auth/application/session_controller.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
+import 'package:mobile/features/push/application/push_registration_provider.dart';
+import 'package:mobile/features/push/data/device_tokens_api.dart';
 
 class _FakeTokenStorage extends TokenStorage {
   _FakeTokenStorage([this._token]) : super(const FlutterSecureStorage());
@@ -41,6 +43,17 @@ class _FakeAuthApi extends AuthApi {
   Future<void> logout() async {
     logoutCalled = true;
     if (logoutError != null) throw logoutError!;
+  }
+}
+
+class _FakeDeviceTokensApi extends DeviceTokensApi {
+  _FakeDeviceTokensApi() : super(Dio());
+
+  final revokeCalls = <String>[];
+
+  @override
+  Future<void> revoke(String token) async {
+    revokeCalls.add(token);
   }
 }
 
@@ -202,6 +215,38 @@ void main() {
       expect(schoolRows.single.uuid, 'school-uuid');
     },
   );
+
+  test('logout also revokes this device\'s push token (WP-07-13), when one was '
+      'registered, and forgets it locally', () async {
+    final tokenStorage = _FakeTokenStorage('existing-token');
+    final authApi = _FakeAuthApi();
+    final deviceTokensApi = _FakeDeviceTokensApi();
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.appSettingsDao.write(
+      PushController.deviceTokenSettingKey,
+      'push-token-a',
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        tokenStorageProvider.overrideWithValue(tokenStorage),
+        authApiProvider.overrideWithValue(authApi),
+        appDatabaseProvider.overrideWithValue(database),
+        deviceTokensApiProvider.overrideWithValue(deviceTokensApi),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(sessionControllerProvider.future);
+    await container.read(sessionControllerProvider.notifier).logout();
+
+    expect(deviceTokensApi.revokeCalls, ['push-token-a']);
+    expect(
+      await database.appSettingsDao.read(PushController.deviceTokenSettingKey),
+      isNull,
+    );
+  });
 
   test(
     'logout proceeds locally even when the server-side revoke fails',

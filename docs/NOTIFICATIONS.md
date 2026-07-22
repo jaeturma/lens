@@ -224,8 +224,8 @@ reliable way to know *which* device token corresponds to the session
 being logged out. Revoking is the **client's** responsibility: a
 well-behaved mobile client calls `DELETE .../device-tokens` with its own
 token as part of its own logout flow, before or after discarding its
-Sanctum token — that's Flutter-side work, out of scope for this session
-(Laravel/API only).
+Sanctum token — that Flutter-side wiring is WP-07-13's job
+(`SessionController.logout`, below).
 
 ## Firebase Push Signal Delivery (WP-06-05)
 
@@ -315,6 +315,90 @@ zero effect on anything else. `tests/Feature/Jobs/SendPushSignalTest.php`
 exercises the job's own logic directly (`(new SendPushSignal($notification))->handle($mockedMessaging)`,
 via Mockery against the `Messaging` contract) rather than through the
 queue, so it needs no real credentials either.
+
+## Flutter Push Registration and Sync Triggers (WP-07-13)
+
+The mobile client (`mobile/lib/features/push/`) is the Flutter-side
+counterpart to WP-06-04/06-05 above — everything those packages
+documented as "Flutter-side work, out of scope for this session" now has
+an implementation.
+
+### No Native Firebase Project Is Configured In This Repository
+
+The same "no real Firebase project or credentials exist in this
+development environment" limitation WP-06-05 documented for the Laravel
+side applies here too, and is handled the same way: nothing is
+hardcoded, and nothing is committed. `AppConfig.firebaseApiKey`/
+`firebaseAppId`/`firebaseMessagingSenderId`/`firebaseProjectId` are
+sourced via `--dart-define` (mirroring `apiBaseUrl`'s own
+`String.fromEnvironment` pattern), and deliberately **not** via a
+committed `google-services.json` processed by the Google Services Gradle
+plugin — passing `FirebaseOptions` explicitly to `Firebase.initializeApp`
+needs no native config file at all, so the Android build stays green
+with nothing configured. `AppConfig.firebaseConfigured` is false unless
+every option is supplied; `main.dart` skips `Firebase.initializeApp`
+entirely in that case, and every push-related provider resolves to
+`NoOpPushMessagingService` (`push_messaging_service.dart`) instead of the
+real Firebase-backed one — registration, message handling, and
+tap-navigation all become silent no-ops rather than throwing. Actually
+provisioning a real Firebase Android app and its option values for each
+real environment remains an ops/deployment task, not this package's.
+
+### Token Registration and Refresh
+
+`DeviceTokensApi` (`push/data/device_tokens_api.dart`) is the client for
+`POST`/`DELETE /notifications/device-tokens` documented above.
+`PushController` (`push/application/push_registration_provider.dart`)
+requests notification permission, registers the current FCM token if
+granted, and keeps listening for Firebase-initiated token rotation
+(`onTokenRefresh`) for the life of the app — each registration call
+persists the token locally (`app_settings` key/value table) so a repeat
+call with an unchanged token is a no-op, and so a refresh can supply the
+correct `previous_token`. Fires once per session from `HomePage`, the
+same "support startup" shape `startupSyncProvider` (WP-07-08) already
+established.
+
+### Push Triggers Sync
+
+`PushSyncTriggerController` (`push/application/push_sync_trigger_provider.dart`)
+triggers an ordinary `SyncEngine.sync()` — no separate push-specific sync
+logic — on a foreground message (`onMessage`), and additionally opens
+the notification inbox (`AppRoutes.notifications`) after syncing when a
+guardian taps the notification itself (`onMessageOpenedApp`, or
+`getInitialMessage` when the tap launched the app from fully terminated).
+The inbox is the one destination this can open regardless of which
+`NotificationType` triggered the push, since the push payload itself
+carries no notification-specific content to deep-link with (see "The
+Payload Is Genuinely Empty of Content" above). A push arriving while the
+app is backgrounded or terminated is handled by
+`firebaseMessagingBackgroundHandler`
+(`push/data/firebase_background_handler.dart`), a top-level function
+Firebase runs in its own headless isolate — it builds its own
+`Dio`/`AppDatabase`/`SyncEngine` rather than reaching into the running
+app's provider container, since there may not be one. A resumed
+foreground (`AppLifecycleState.resumed`) also triggers a sync
+(`LensApp`'s own `WidgetsBindingObserver`) — unconditionally, since that
+trigger needs no push/Firebase involvement at all.
+
+### App Remains Usable Without Notification Permission
+
+A guardian who declines the permission prompt (`PushController.start`
+returning early) or never has Firebase configured at all simply never
+gets a registered token or any push-triggered sync — every screen
+already works entirely from locally synced data regardless (bootstrap,
+startup sync, pull-to-refresh, and app-resume sync all still apply),
+so nothing about the rest of the app degrades.
+
+### Verification Gap
+
+Actual push delivery, real FCM token issuance, and the background
+isolate handler could not be exercised in this environment — there is no
+real Firebase project configured and no Android emulator/device attached
+to this development machine (only Windows desktop and web targets were
+available at implementation time). Everything above was verified as far
+as `flutter analyze` and Dart-level unit/widget tests (with
+`PushMessagingService` faked) can reach; the native Android build itself
+was not compiled or run.
 
 ## Not Yet Implemented
 

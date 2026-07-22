@@ -9,6 +9,8 @@ import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../auth/application/session_controller.dart';
 import '../../notifications/application/notifications_provider.dart';
+import '../../push/application/push_registration_provider.dart';
+import '../../push/application/push_sync_trigger_provider.dart';
 import '../../sync/application/sync_engine.dart';
 import '../../sync/application/sync_state_provider.dart';
 import '../../sync/presentation/sync_status_banner.dart';
@@ -31,6 +33,11 @@ class HomePage extends ConsumerWidget {
     // "Support startup" (WP-07-08): fires once, the first time this
     // screen renders after login.
     ref.watch(startupSyncProvider);
+    // Token registration/refresh and push-triggered sync (WP-07-13) —
+    // same "fires once per session" shape, both no-ops when Firebase
+    // isn't configured.
+    ref.watch(pushRegistrationProvider);
+    ref.watch(pushSyncTriggerProvider);
 
     final today = todayIn(school.timezone);
     final children = ref.watch(linkedChildrenProvider(today));

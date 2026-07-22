@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../push/application/push_registration_provider.dart';
 import '../data/auth_api.dart';
 
 final sessionControllerProvider =
@@ -48,12 +49,19 @@ class SessionController extends AsyncNotifier<bool> {
   /// proceeds even if it fails (unreachable server, already-expired
   /// token) — the guardian's own device state is what a guardian expects
   /// "log out" to actually change.
+  ///
+  /// Also revokes this device's push token (WP-07-13) — same best-effort
+  /// treatment, and the same reason: `docs/NOTIFICATIONS.md` deliberately
+  /// left this as the client's responsibility, since only the client
+  /// knows which token belongs to the session being logged out.
   Future<void> logout() async {
     try {
       await ref.read(authApiProvider).logout();
     } on ApiException {
       // Best-effort — see doc comment above.
     }
+
+    await ref.read(pushControllerProvider).revokeAndForget();
 
     await ref.read(tokenStorageProvider).clearAccessToken();
     await ref.read(appDatabaseProvider).clearGuardianOwnedData();
