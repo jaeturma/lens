@@ -85,6 +85,10 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(120)->by($device?->id ?: $request->ip());
         });
+
+        RateLimiter::for('device-tokens', function (Request $request): Limit {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     /**

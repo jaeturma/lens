@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Notifications\RegisterDeviceTokenController;
+use App\Http\Controllers\Api\V1\Notifications\RevokeDeviceTokenController;
 use App\Http\Controllers\Api\V1\ResolveSchoolController;
 use App\Http\Controllers\Api\V1\Rfid\IngestRfidScanController;
 use App\Http\Controllers\Api\V1\Sync\BootstrapController;
@@ -34,5 +36,10 @@ Route::prefix('v1')->group(function (): void {
 
     Route::prefix('rfid')->middleware(['rfid.device', 'throttle:rfid-scan'])->group(function (): void {
         Route::post('scans', IngestRfidScanController::class);
+    });
+
+    Route::prefix('notifications')->middleware(['auth:sanctum', 'school.mobile', 'throttle:device-tokens'])->group(function (): void {
+        Route::post('device-tokens', RegisterDeviceTokenController::class);
+        Route::delete('device-tokens', RevokeDeviceTokenController::class);
     });
 });

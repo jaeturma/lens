@@ -150,8 +150,85 @@ knows exactly what changed" pattern WP-06-02 used for attendance.
 - Withdrawing and (both scheduled and manual) expiring never notify —
   only the publish transition does.
 
+## Mobile Device Token Registration (WP-06-04)
+
+`device_tokens` (`App\Models\DeviceToken`): `guardian_id` (FK,
+`cascadeOnDelete`), `token` (the Firebase registration token itself,
+**unique**, hidden from serialization — `#[Hidden(['token'])]`, same
+caution `RfidDevice.secret` gets, even though a push token isn't a login
+credential), `status` (`App\Enums\DeviceTokenStatus`: `Active`,
+`Revoked`, `Deactivated` — only the first two are ever set by this
+package; `Deactivated` is WP-06-06's, for invalid-token detection during
+push delivery), `revoked_at` (nullable timestamp). No `school_id` column
+— see the migration's own note: this installation is bound to exactly
+one school already (`docs/SECURITY.md`), so every token registered
+through it is implicitly school-bound; the `school.mobile` middleware on
+both routes below (same gate login/sync/bootstrap use — maintenance
+mode, mobile-disabled, minimum app version) is what actually *enforces*
+that binding, not a redundant column.
+
+### Endpoints
+
+Both under `/api/v1/notifications/device-tokens`, guardian-authenticated
+(`auth:sanctum` + `school.mobile`), rate-limited (`device-tokens`, 30
+requests/minute per user, same shape as `sync`'s limiter):
+
+- `POST` — register or refresh. Body: `token` (required), `previous_token`
+  (optional — see Refresh below). Rejects a non-guardian account (`403`)
+  or a guardian-role account with no `Guardian` profile yet (`403`, same
+  backward-compatible case bootstrap already handles).
+- `DELETE` — revoke. Body: `token` (required). Only ever revokes a token
+  the **authenticated guardian owns**; a token belonging to a different
+  guardian (or that doesn't exist) returns `404` rather than leaking
+  whose it is or letting one guardian revoke another's.
+
+### Register, Refresh, and Duplicate Handling
+
+`App\Actions\Notifications\RegisterDeviceToken` handles all three as one
+action:
+
+- **Register** (no `previous_token`): if `token` has no existing row,
+  creates one, `Active`, owned by the calling guardian.
+- **Duplicate tokens are handled by claiming, not erroring.** `token` is
+  globally unique, so a raw second `INSERT` for an already-registered
+  value would violate the constraint. Instead, if a row for that exact
+  `token` already exists — under this guardian (a redundant re-register,
+  e.g. an app restart) or under a **different** one (the same physical
+  device previously belonged to another guardian's login) — it's
+  reactivated (`Active`, `revoked_at` cleared) and reassigned to the
+  current guardian, rather than throwing. This also transparently
+  reactivates a token that was previously revoked.
+- **Refresh** (`previous_token` given): Firebase periodically rotates a
+  device's token; the client is expected to tell the server which token
+  the new one replaces. The `previous_token` row is revoked (only if it
+  belongs to the **same** calling guardian — a `previous_token` claim
+  can't be used to revoke a different guardian's token), then the new
+  `token` is registered via the same claim-or-create logic above.
+
+### Revoke and Logout — Deliberately Not Linked
+
+`App\Actions\Notifications\RevokeDeviceToken` is unconditional and
+idempotent (revoking an already-revoked token is a no-op, not an error —
+same simplicity as `RfidDevice`'s activate/revoke, no
+`InvalidTransitionException` the way announcements/attendance
+corrections have).
+
+**Logout (`App\Http\Controllers\Api\V1\Auth\LogoutController`, WP-01-04)
+does not automatically revoke any device token, and this package
+deliberately did not change that.** A guardian's Sanctum session and
+their device's push token are different things: the same physical device
+could have several Sanctum tokens over time (re-logins), and a guardian
+could be logged in on **multiple devices** at once (this package's own
+"support multiple devices per guardian" scope item) — the server has no
+reliable way to know *which* device token corresponds to the session
+being logged out. Revoking is the **client's** responsibility: a
+well-behaved mobile client calls `DELETE .../device-tokens` with its own
+token as part of its own logout flow, before or after discarding its
+Sanctum token — that's Flutter-side work, out of scope for this session
+(Laravel/API only).
+
 ## Not Yet Implemented
 
-Device token registration (WP-06-04), push delivery (WP-06-05), and
-notification sync/delivery logging (WP-06-06) are the remaining phase-06
-work packages — none exist yet. This document will grow as they land.
+Push delivery (WP-06-05) and notification sync/delivery logging
+(WP-06-06) are the remaining phase-06 work packages — neither exists
+yet. This document will grow as they land.

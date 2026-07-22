@@ -93,4 +93,12 @@ class Guardian extends Model
     {
         return $this->hasMany(GuardianNotification::class);
     }
+
+    /**
+     * @return HasMany<DeviceToken, $this>
+     */
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
 }
