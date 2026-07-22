@@ -151,8 +151,43 @@ to run repeatedly.
 - Only `StudentStatus::Active` students are considered — inactive
   (transferred-out/withdrawn) students never accumulate absence records.
 
+## Attendance Corrections (WP-04-05)
+
+`App\Actions\Attendance\CorrectAttendanceDailySummary`, behind
+`PATCH attendance/daily-summaries/{summary}/correct`
+(`App\Policies\AttendanceDailySummaryPolicy::update`, administrators only),
+lets an administrator override a daily summary's absence status with a
+required reason:
+
+- **Raw scans and events are never touched.** A correction only ever
+  updates the `attendance_daily_summaries` row itself — `rfid_scans` and
+  `attendance_events` stay exactly as originally recorded, append-only.
+- **Correcting to absent clears `arrival_event_id`/`departure_event_id`.**
+  A summary can't stand as both "absent" and "has a recorded arrival," and
+  an administrator asserting absence supersedes whatever scan the summary
+  currently points to (e.g. a card tapped by the wrong student). The
+  underlying `AttendanceEvent` row is untouched — only the summary's link
+  to it is cleared.
+- **Correcting to present** (overriding an automatic WP-04-04 absence
+  mark) simply flips `is_absent` back to `false` — there's no real scan to
+  link, so arrival/departure stay `null`. This represents an attestation
+  ("the nurse confirms this student was on campus"), not a fabricated tap.
+- **Reason is required** (`min:5`) and stored, along with a before/after
+  snapshot of the corrected fields, in an `attendance_daily_summary.
+  corrected` `App\Actions\Audit\RecordAuditLog` entry (WP-01-06).
+- **The correction reaches mobile incrementally for free**: `update()`
+  fires `AttendanceDailySummary`'s existing `#[ObservedBy]` →
+  `RecordSyncChange` (WP-04-02), the same path arrival/departure writes
+  already use — no new sync-feed wiring was needed. Guardian visibility is
+  still gated on WP-04-06 exactly as it already was.
+- **No admin UI was built** — only the backend endpoint, matching the
+  precedent WP-04-01 set for `AttendanceRule` ("exists and usable now, an
+  edit surface is a gap for a future work package to fill deliberately").
+  No work package in `docs/EXECUTION-ORDER.md`'s phase 04 list is a
+  dedicated "attendance screens" package, unlike RFID's WP-03-05.
+
 ## Not Yet Implemented
 
-Corrections (WP-04-05) and the guardian-facing sync contract for
-attendance (WP-04-06) are the remaining phase-04 work packages — neither
-exists yet. This document will grow as they land.
+The guardian-facing sync contract for attendance (WP-04-06) is the
+remaining phase-04 work package — it doesn't exist yet. This document will
+grow as it lands.
