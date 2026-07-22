@@ -50,7 +50,7 @@ test('a correction records an audit log with the reason and before/after state',
     expect($log->metadata['after']['is_absent'])->toBeTrue();
 });
 
-test('a correction records a sync change for the daily summary', function () {
+test('a correction records a sync change tagged as a correction, not a generic update', function () {
     $actor = User::factory()->schoolAdministrator()->create();
     $summary = AttendanceDailySummary::factory()->create(['is_absent' => false]);
 
@@ -59,7 +59,7 @@ test('a correction records a sync change for the daily summary', function () {
     $this->assertDatabaseHas('sync_changes', [
         'resource_type' => 'attendance_daily_summary',
         'resource_id' => $summary->id,
-        'action' => 'updated',
+        'action' => 'corrected',
     ]);
 });
 

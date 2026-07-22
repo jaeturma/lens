@@ -186,8 +186,28 @@ required reason:
   No work package in `docs/EXECUTION-ORDER.md`'s phase 04 list is a
   dedicated "attendance screens" package, unlike RFID's WP-03-05.
 
-## Not Yet Implemented
+## Parent Attendance Sync Contract (WP-04-06)
 
-The guardian-facing sync contract for attendance (WP-04-06) is the
-remaining phase-04 work package — it doesn't exist yet. This document will
-grow as it lands.
+Guardians now see their linked children's attendance over the mobile sync
+API — see `docs/api/SYNC.md`'s `attendance_daily_summary` section for the
+full contract (payload shape, stable ID, corrections-as-`corrected`,
+deletion behavior, and how history is retrieved). Summary of what changed:
+
+- `App\Actions\Sync\ScopeChangesToGuardian` gained an
+  `attendance_daily_summary` branch, scoped by the payload's `student_id`
+  (not `resource_id`, unlike `student`/`guardian` entries) against the
+  guardian's currently active links.
+- `App\Observers\AttendanceDailySummaryObserver`'s payload gained
+  `is_late` and `is_absent` — genuinely necessary for a guardian to
+  understand a summary, but not previously exposed since nothing consumed
+  the payload before this package wired up guardian visibility.
+- Bootstrap's `children[]` gained `today_attendance` — each active child's
+  current-day summary (`App\Models\Student::attendanceSummaries()`, new,
+  eager-loaded constrained to today in the school's timezone).
+- A correction (WP-04-05) now records `SyncChangeAction::Corrected`
+  instead of the generic `Updated`, so a guardian's client can
+  special-case a correction the same way it can already special-case a
+  `guardian_student_link` revocation.
+
+phase 4 (Attendance) is now complete — all six work packages (WP-04-01
+through WP-04-06) are implemented.

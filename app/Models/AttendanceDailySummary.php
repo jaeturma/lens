@@ -32,6 +32,19 @@ class AttendanceDailySummary extends Model
     use HasFactory;
 
     /**
+     * Transient, non-persisted signal for the current save only — a plain
+     * typed property, not an Eloquent attribute, so it never affects
+     * getDirty()/the UPDATE statement. Set by
+     * App\Actions\Attendance\CorrectAttendanceDailySummary right before
+     * update() so App\Observers\AttendanceDailySummaryObserver can record
+     * SyncChangeAction::Corrected instead of the generic Updated — an
+     * ordinary field diff can't tell a correction apart from
+     * ProcessRfidScan/MarkDailyAbsences writes, which can land on the same
+     * fields.
+     */
+    public bool $wasCorrected = false;
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

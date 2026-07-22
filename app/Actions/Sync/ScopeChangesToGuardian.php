@@ -25,6 +25,10 @@ class ScopeChangesToGuardian
                 'student' => in_array($change->resource_id, $activeStudentIds, true),
                 'guardian' => $guardian !== null && $change->resource_id === $guardian->id,
                 'guardian_student_link' => in_array($change->resource_id, $ownLinkIds, true),
+                // The summary's own resource_id isn't the student — it's
+                // scoped by the student_id carried in its payload instead,
+                // same "currently active" rule as `student` entries.
+                'attendance_daily_summary' => in_array($change->payload['student_id'] ?? null, $activeStudentIds, true),
                 default => false,
             };
         })->values();

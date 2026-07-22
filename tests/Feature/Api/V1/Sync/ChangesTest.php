@@ -3,6 +3,7 @@
 use App\Actions\Sync\RecordSyncChange;
 use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\SyncChangeAction;
+use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
 use App\Models\School;
@@ -154,6 +155,32 @@ test('incremental sync returns a link revocation even after the link is no longe
     expect($changes)->toHaveCount(1);
     expect($changes[0]['resource_type'])->toBe('guardian_student_link');
     expect($changes[0]['action'])->toBe('revoked');
+});
+
+test('incremental sync only returns attendance changes for the guardian\'s own active links', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+
+    $ownStudent = Student::factory()->create();
+    $otherStudent = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($ownStudent)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $ownSummary = AttendanceDailySummary::factory()->for($ownStudent)->create();
+    $otherSummary = AttendanceDailySummary::factory()->for($otherStudent)->create();
+
+    $cursorAfterSetup = SyncCursor::fromSequence((int) SyncChange::query()->max('id'));
+
+    (new RecordSyncChange)($ownSummary, SyncChangeAction::Updated, ['student_id' => $ownStudent->id]);
+    (new RecordSyncChange)($otherSummary, SyncChangeAction::Updated, ['student_id' => $otherStudent->id]);
+
+    $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
+
+    $response->assertOk();
+    $changes = $response->json('data.changes');
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['resource_id'])->toBe($ownSummary->id);
 });
 
 test('a non-guardian account is rejected from incremental sync', function () {

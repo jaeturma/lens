@@ -1,8 +1,15 @@
 <?php
 
+use App\Actions\Attendance\ProcessRfidScan;
+use App\Actions\RfidCards\AssignRfidCard;
 use App\Enums\GuardianStudentLinkStatus;
+use App\Enums\RfidDeviceDirectionMode;
+use App\Enums\RfidScanClassification;
+use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
+use App\Models\RfidDevice;
+use App\Models\RfidScan;
 use App\Models\Student;
 use App\Models\User;
 
@@ -64,6 +71,63 @@ test('bootstrap returns the guardian profile and only actively linked children',
     expect($children)->toHaveCount(1);
     expect($children[0]['uuid'])->toBe($activeStudent->uuid);
     expect($children[0]['relationship_type'])->toBe('mother');
+});
+
+test('bootstrap reports null today_attendance for a child with no summary today', function () {
+    bindSchool(['timezone' => 'UTC']);
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $response = $this->withToken($token)->getJson('/api/v1/sync/bootstrap');
+
+    $response->assertOk();
+    expect($response->json('data.children.0.today_attendance'))->toBeNull();
+});
+
+test('bootstrap reports today\'s attendance for a child who arrived today', function () {
+    bindSchool(['timezone' => 'UTC']);
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Entry]);
+    $uid = 'BOOTATT1';
+    app(AssignRfidCard::class)($student, $uid);
+    $scan = RfidScan::factory()->for($device, 'device')->create([
+        'uid' => $uid,
+        'classification' => RfidScanClassification::Valid,
+    ]);
+    $event = (new ProcessRfidScan)($scan);
+
+    $response = $this->withToken($token)->getJson('/api/v1/sync/bootstrap');
+
+    $response->assertOk();
+    $attendance = $response->json('data.children.0.today_attendance');
+    expect($attendance)->not->toBeNull();
+    expect($attendance['arrival'])->toBe($event->occurred_at->toIso8601String());
+    expect($attendance['departure'])->toBeNull();
+    expect($attendance['is_absent'])->toBeFalse();
+});
+
+test('bootstrap does not report yesterday\'s attendance as today_attendance', function () {
+    bindSchool(['timezone' => 'UTC']);
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    AttendanceDailySummary::factory()->for($student)->create(['date' => now()->subDay()->toDateString()]);
+
+    $response = $this->withToken($token)->getJson('/api/v1/sync/bootstrap');
+
+    $response->assertOk();
+    expect($response->json('data.children.0.today_attendance'))->toBeNull();
 });
 
 test('an unauthenticated bootstrap request is rejected', function () {

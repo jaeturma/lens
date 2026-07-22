@@ -77,4 +77,12 @@ class Student extends Model
     {
         return $this->links()->where('status', GuardianStudentLinkStatus::Active);
     }
+
+    /**
+     * @return HasMany<AttendanceDailySummary, $this>
+     */
+    public function attendanceSummaries(): HasMany
+    {
+        return $this->hasMany(AttendanceDailySummary::class);
+    }
 }

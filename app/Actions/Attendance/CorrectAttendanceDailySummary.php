@@ -37,6 +37,7 @@ class CorrectAttendanceDailySummary
             $attributes['departure_event_id'] = null;
         }
 
+        $summary->wasCorrected = true;
         $summary->update($attributes);
 
         ($this->recordAuditLog)($actor, 'attendance_daily_summary.corrected', $summary, [

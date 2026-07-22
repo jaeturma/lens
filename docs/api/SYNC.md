@@ -58,6 +58,16 @@ WP-02-02/04/05). `children` only ever contains **actively** linked
 students, per `Guardian::activeLinks()` (WP-02-03/06) — a revoked link's
 student never appears here, even if it appeared in a previous bootstrap.
 
+Each child also carries `today_attendance` (WP-04-06) — that student's
+`AttendanceDailySummary` for the **current date in the school's configured
+timezone**, or `null` if none exists yet today. This is deliberately a
+narrow "current state" snapshot, not a history dump: full attendance
+history (including days before today) reaches the client entirely through
+incremental sync (below), by walking `/sync/changes` from
+`cursor=initial()` if the client wants to backfill it — no separate
+paginated history endpoint exists or is needed, since the change feed is
+already paginated.
+
 ```json
 {
   "success": true,
@@ -102,7 +112,13 @@ student never appears here, even if it appeared in a previous bootstrap.
         "status": "active",
         "photo_url": null,
         "relationship_type": "mother",
-        "is_primary_contact": true
+        "is_primary_contact": true,
+        "today_attendance": {
+          "arrival": "2026-07-22T00:05:00Z",
+          "departure": null,
+          "is_late": false,
+          "is_absent": false
+        }
       }
     ],
     "next_cursor": "MA=="
@@ -172,8 +188,13 @@ returns before it is serialized:
   regardless of current status** — deliberately not filtered by active
   status, because the revoked-link entry is exactly what tells the client
   to remove a student locally.
+- `attendance_daily_summary` entries (WP-04-06): visible only if the
+  student is in the guardian's **currently active** linked set, same rule
+  as `student` — but since the summary's own `resource_id` is the
+  summary's row, not the student's, this branch checks the `student_id`
+  carried in the entry's `payload` instead of `resource_id`.
 - Any other `resource_type` is denied by default. A future work package
-  that introduces a new synchronized resource (attendance, announcements,
+  that introduces a new synchronized resource (announcements,
   notifications) must add a branch to this action, or its entries are
   silently invisible to guardians rather than leaked.
 
@@ -250,9 +271,58 @@ always the first and only creation for that pair. Created/revoked via the
 admin web UI (WP-02-05); a guardian only ever sees their own links over
 sync (see "Guardian-Scoped Authorization" above).
 
+### `attendance_daily_summary` (WP-04-06)
+
+Via `App\Observers\AttendanceDailySummaryObserver` (WP-04-02), which fires
+on every `App\Models\AttendanceDailySummary` create/update — including
+arrivals/departures (WP-04-02/03), automatic absence marking (WP-04-04),
+and administrator corrections (WP-04-05). Payload:
+
+```json
+{
+  "student_id": 42,
+  "date": "2026-07-22",
+  "arrival": "2026-07-22T00:05:00Z",
+  "departure": null,
+  "is_late": false,
+  "is_absent": false
+}
+```
+
+- **Stable ID**: `resource_id` (the summary's own database id) — a summary
+  is created once per `(student_id, date)` and only ever *updated*
+  thereafter (WP-04-02/03/04/05 all update the existing row rather than
+  creating a new one for the same day), so `resource_id` never changes and
+  is never reused for a different day. No separate `uuid` column exists or
+  is needed for this resource.
+- **Corrections** (WP-04-05) record `action` `corrected`, not `updated` —
+  `App\Models\AttendanceDailySummary::$wasCorrected` is a transient,
+  non-persisted flag `App\Actions\Attendance\CorrectAttendanceDailySummary`
+  sets immediately before its `update()` call, and the observer resets it
+  right after reading it so it can't leak into a later, unrelated save of
+  the same in-memory instance. Every other write path (arrival/departure
+  recording, absence marking) leaves it `false`, recording `updated`.
+- **Deletion behavior**: never deleted. Nothing in the codebase removes an
+  `AttendanceDailySummary` row — corrections update fields in place (see
+  WP-04-05), they don't delete and recreate. No `deleted` tombstone action
+  will ever be recorded for this resource type.
+- **Guardian scoping**: see "Guardian-Scoped Authorization" above —
+  scoped by the payload's `student_id`, not `resource_id`.
+- **Bootstrap**: each active child's *current* (today, school timezone)
+  summary is embedded directly in `children[].today_attendance` (see
+  Bootstrap above) — not delivered via a change-feed replay, since a
+  guardian's very first bootstrap has no prior cursor position to have
+  missed it from.
+- **History / pagination**: "if history is separately queried" (the
+  original scope language) does not apply — there is no separate
+  attendance-history endpoint. A client wanting attendance before today
+  gets it by walking `/sync/changes` from `cursor=initial()`, reusing
+  `FetchSyncChanges`'s existing cursor/limit pagination rather than adding
+  a second, resource-specific pagination mechanism.
+
 ## Not Yet Implemented
 
-No synchronized resource exists yet for attendance, announcements, or
-notifications (phase 4-6). Their eventual `resource_type`s must be added
-to `App\Actions\Sync\ScopeChangesToGuardian`'s `match` when they land, or
+No synchronized resource exists yet for announcements or notifications
+(phase 5-6). Their eventual `resource_type`s must be added to
+`App\Actions\Sync\ScopeChangesToGuardian`'s `match` when they land, or
 their entries will be silently invisible to guardians (denied by default).

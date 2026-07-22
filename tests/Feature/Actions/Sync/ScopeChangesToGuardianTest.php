@@ -4,6 +4,7 @@ use App\Actions\Sync\RecordSyncChange;
 use App\Actions\Sync\ScopeChangesToGuardian;
 use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\SyncChangeAction;
+use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
 use App\Models\School;
@@ -93,6 +94,36 @@ test('a guardian with no profile sees no student, guardian, or link changes', fu
     $linkChange = (new RecordSyncChange)($link, SyncChangeAction::Updated);
 
     $scoped = (new ScopeChangesToGuardian)(new Collection([$studentChange, $guardianChange, $linkChange]), null);
+
+    expect($scoped)->toBeEmpty();
+});
+
+test('attendance daily summary changes are visible only for currently active links, scoped by the payload student_id', function () {
+    $guardian = Guardian::factory()->create();
+    $linkedStudent = Student::factory()->create();
+    $unlinkedStudent = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($linkedStudent)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $linkedSummary = AttendanceDailySummary::factory()->for($linkedStudent)->create();
+    $unlinkedSummary = AttendanceDailySummary::factory()->for($unlinkedStudent)->create();
+
+    $linkedChange = (new RecordSyncChange)($linkedSummary, SyncChangeAction::Updated, ['student_id' => $linkedStudent->id]);
+    $unlinkedChange = (new RecordSyncChange)($unlinkedSummary, SyncChangeAction::Updated, ['student_id' => $unlinkedStudent->id]);
+
+    $scoped = (new ScopeChangesToGuardian)(new Collection([$linkedChange, $unlinkedChange]), $guardian);
+
+    expect($scoped->pluck('id')->all())->toBe([$linkedChange->id]);
+});
+
+test('attendance daily summary changes for a revoked link are not visible', function () {
+    $guardian = Guardian::factory()->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Revoked]);
+    $summary = AttendanceDailySummary::factory()->for($student)->create();
+
+    $change = (new RecordSyncChange)($summary, SyncChangeAction::Corrected, ['student_id' => $student->id]);
+
+    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), $guardian);
 
     expect($scoped)->toBeEmpty();
 });
