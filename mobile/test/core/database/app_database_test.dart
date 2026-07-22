@@ -1,4 +1,6 @@
-import 'package:drift/drift.dart';
+import 'dart:io';
+
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/database/app_database.dart';
@@ -148,4 +150,36 @@ void main() {
       expect(await database.syncStateDao.readCursor(), 'cursor-b');
     },
   );
+
+  test('the school binding survives an app restart (WP-07-04: "app restart '
+      'does not ask again") — a fresh AppDatabase over the same file still '
+      'has it', () async {
+    final directory = await Directory.systemTemp.createTemp('lens_db_test');
+    final path = '${directory.path}/restart_test.sqlite';
+    addTearDown(() => directory.delete(recursive: true));
+
+    final firstRun = AppDatabase(NativeDatabase(File(path)));
+    await firstRun.schoolProfileDao.upsert(
+      SchoolProfileCompanion.insert(
+        uuid: 'school-uuid',
+        publicId: 'SCH-0001',
+        name: 'Example School',
+        timezone: 'Asia/Manila',
+        mobileEnabled: true,
+        maintenanceMode: false,
+        notificationsEnabled: true,
+        minimumAppVersion: '0.1.0',
+      ),
+    );
+    await firstRun.close();
+
+    // A brand new AppDatabase instance, exactly as app startup would
+    // construct one after a process restart — not the same Dart object.
+    final secondRun = AppDatabase(NativeDatabase(File(path)));
+    addTearDown(secondRun.close);
+
+    final school = await secondRun.schoolProfileDao.watch().first;
+    expect(school, isNotNull);
+    expect(school!.uuid, 'school-uuid');
+  });
 }

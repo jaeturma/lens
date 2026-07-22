@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pre-Android 12 auto backup (docs/ARCHITECTURE.md Binding Rules, WP-07-04):
+  excludes the school binding and everything else that lives in the local
+  Drift SQLite database, plus secure state, from being restored onto a
+  fresh install.
+
+  The database file itself is not under the "database" domain — drift_flutter
+  places it via path_provider's getApplicationDocumentsPath(), which on
+  Android resolves to Context.getDir("flutter", MODE_PRIVATE), i.e. the
+  app_flutter/ directory directly under the app's private data root
+  (domain "root"), not Context.getDatabasePath().
+-->
+<full-backup-content>
+    <exclude domain="root" path="app_flutter/" />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>
