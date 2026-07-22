@@ -1,3 +1,4 @@
+export type * from './announcement';
 export type * from './auth';
 export type * from './guardian';
 export type * from './navigation';

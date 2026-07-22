@@ -4,11 +4,13 @@ import {
     CreditCard,
     FolderGit2,
     LayoutGrid,
+    Megaphone,
     Radio,
     ScanLine,
     UserCog,
     Users,
 } from 'lucide-react';
+import AnnouncementController from '@/actions/App/Http/Controllers/Announcements/AnnouncementController';
 import GuardianController from '@/actions/App/Http/Controllers/Guardians/GuardianController';
 import RfidCardController from '@/actions/App/Http/Controllers/RfidCards/RfidCardController';
 import RfidDeviceController from '@/actions/App/Http/Controllers/RfidDevices/RfidDeviceController';
@@ -81,6 +83,11 @@ export function AppSidebar() {
                       title: 'RFID Scans',
                       href: RfidScanController.index(),
                       icon: ScanLine,
+                  },
+                  {
+                      title: 'Announcements',
+                      href: AnnouncementController.index(),
+                      icon: Megaphone,
                   },
               ]
             : []),

@@ -65,12 +65,50 @@ future guardian-scoping branch that could accidentally leak one:
   WP-04-02 left for attendance until WP-04-06 closed it. Guardian-scoped
   audience targeting is WP-05-03/05-04's job.
 
+## Administration (WP-05-02)
+
+Administrator-only web screens under `/announcements`
+(`App\Http\Controllers\Announcements\*`, `App\Policies\AnnouncementPolicy`
+— `isAdministrator()`, same gate every other admin resource uses):
+
+- `AnnouncementController` (`index`/`create`/`store`/`show`/`edit`/
+  `update`) — ordinary CRUD, mirroring `StudentController`/
+  `RfidDeviceController` exactly. `store` always creates a `Draft`
+  (`author_id` set from the acting user) — there is no way to create an
+  announcement in any other status from the form. `update` only ever
+  touches `title`/`body`/`expires_at`; status never changes through this
+  endpoint.
+- Three single-purpose action controllers —
+  `PublishAnnouncementController`, `WithdrawAnnouncementController`,
+  `ExpireAnnouncementController` — call the WP-05-01 actions (plus a new
+  `App\Actions\Announcements\ExpireAnnouncement` for a manual,
+  admin-triggered expire; see below) and catch
+  `InvalidAnnouncementTransitionException`, converting it to a normal
+  `422` validation error instead of a `500`.
+- Every mutation (create, edit, publish, withdraw, expire) calls
+  `App\Actions\Audit\RecordAuditLog` **from the controller**, not from
+  inside the WP-05-01 actions — matching `StudentController`/
+  `RfidDeviceController`'s convention (not `AssignRfidCard`/
+  `ReplaceRfidCard`'s, which self-audit); the two lifecycle action classes
+  stay audit-agnostic and unchanged from WP-05-01.
+
+### Manual vs. Automatic Expiration
+
+Two different ways an announcement reaches `Expired`, both valid only
+from `Published`:
+
+- `App\Actions\Announcements\ExpireDueAnnouncements` (WP-05-01) — bulk,
+  scheduled, only considers announcements whose `expires_at` has actually
+  passed.
+- `App\Actions\Announcements\ExpireAnnouncement` (WP-05-02, new) —
+  single, admin-triggered, works even with no `expires_at` set at all
+  (e.g. "this is no longer relevant, retire it now"). "Administrators can
+  ... expire" is one of WP-05-02's own acceptance criteria, distinct from
+  the scheduled sweep.
+
 ### Not Yet Implemented
 
-No admin UI/API exists yet — announcements exist and are usable now as
-ordinary Eloquent data plus the two lifecycle actions, callable from code
-or `tinker`, same "usable now, edit surface is a future package's job"
-precedent WP-04-01 set for `AttendanceRule`. Administration (create/edit/
-publish/withdraw screens, authorization, audit logging — WP-05-02),
-audience targeting (WP-05-03), and the guardian-facing sync contract
-(WP-05-04) are the remaining phase-05 work packages.
+Audience targeting (WP-05-03) and the guardian-facing sync contract
+(WP-05-04) are the remaining phase-05 work packages — neither exists yet.
+Every announcement, published or not, is still invisible to every
+guardian (see "Sync Feed and Draft Invisibility" above).
