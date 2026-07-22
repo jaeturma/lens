@@ -55,9 +55,15 @@ class GuardianProfileDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsert(GuardianProfileCompanion entry) {
     return into(guardianProfile).insertOnConflictUpdate(entry);
   }
+
+  Future<void> deleteByUuid(String uuid) {
+    return (delete(
+      guardianProfile,
+    )..where((row) => row.uuid.equals(uuid))).go();
+  }
 }
 
-/// Repository boundary for [Students]: the guardian's linked children.
+/// Repository boundary for [Students].
 @DriftAccessor(tables: [Students])
 class StudentsDao extends DatabaseAccessor<AppDatabase>
     with _$StudentsDaoMixin {
@@ -71,6 +77,44 @@ class StudentsDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> deleteByUuid(String uuid) {
     return (delete(students)..where((row) => row.uuid.equals(uuid))).go();
+  }
+
+  /// Resolves a `student`-type resource's numeric server id to the local
+  /// row's `uuid` — needed because `attendance_daily_summary` and
+  /// `guardian_student_link` payloads key a student by that numeric id,
+  /// never by `uuid` (`docs/api/SYNC.md`).
+  Future<String?> findUuidByServerId(int serverId) async {
+    final row = await (select(
+      students,
+    )..where((row) => row.serverId.equals(serverId))).getSingleOrNull();
+
+    return row?.uuid;
+  }
+}
+
+/// Repository boundary for [GuardianStudentLinks].
+@DriftAccessor(tables: [GuardianStudentLinks])
+class GuardianStudentLinksDao extends DatabaseAccessor<AppDatabase>
+    with _$GuardianStudentLinksDaoMixin {
+  GuardianStudentLinksDao(super.db);
+
+  Stream<List<GuardianStudentLink>> watchAll() =>
+      select(guardianStudentLinks).watch();
+
+  Future<void> upsert(GuardianStudentLinksCompanion entry) {
+    return into(guardianStudentLinks).insertOnConflictUpdate(entry);
+  }
+
+  Future<void> deleteByUuid(String uuid) {
+    return (delete(
+      guardianStudentLinks,
+    )..where((row) => row.uuid.equals(uuid))).go();
+  }
+
+  Future<void> deleteByStudentServerId(int studentServerId) {
+    return (delete(
+      guardianStudentLinks,
+    )..where((row) => row.studentServerId.equals(studentServerId))).go();
   }
 }
 
@@ -99,6 +143,14 @@ class AttendanceRecordsDao extends DatabaseAccessor<AppDatabase>
         target: [attendanceRecords.studentUuid, attendanceRecords.date],
       ),
     );
+  }
+
+  /// Used when a student is removed locally (their `guardian_student_link`
+  /// was revoked or deleted) — their attendance history goes with them.
+  Future<void> deleteForStudent(String studentUuid) {
+    return (delete(
+      attendanceRecords,
+    )..where((row) => row.studentUuid.equals(studentUuid))).go();
   }
 }
 
@@ -130,6 +182,10 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> upsert(NotificationsCompanion entry) {
     return into(notifications).insertOnConflictUpdate(entry);
+  }
+
+  Future<void> deleteByUuid(String uuid) {
+    return (delete(notifications)..where((row) => row.uuid.equals(uuid))).go();
   }
 }
 

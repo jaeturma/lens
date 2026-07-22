@@ -1473,31 +1473,6 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _relationshipTypeMeta = const VerificationMeta(
-    'relationshipType',
-  );
-  @override
-  late final GeneratedColumn<String> relationshipType = GeneratedColumn<String>(
-    'relationship_type',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _isPrimaryContactMeta = const VerificationMeta(
-    'isPrimaryContact',
-  );
-  @override
-  late final GeneratedColumn<bool> isPrimaryContact = GeneratedColumn<bool>(
-    'is_primary_contact',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_primary_contact" IN (0, 1))',
-    ),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
@@ -1511,8 +1486,6 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
     schoolYear,
     status,
     photoUrl,
-    relationshipType,
-    isPrimaryContact,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1613,28 +1586,6 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
         photoUrl.isAcceptableOrUnknown(data['photo_url']!, _photoUrlMeta),
       );
     }
-    if (data.containsKey('relationship_type')) {
-      context.handle(
-        _relationshipTypeMeta,
-        relationshipType.isAcceptableOrUnknown(
-          data['relationship_type']!,
-          _relationshipTypeMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_relationshipTypeMeta);
-    }
-    if (data.containsKey('is_primary_contact')) {
-      context.handle(
-        _isPrimaryContactMeta,
-        isPrimaryContact.isAcceptableOrUnknown(
-          data['is_primary_contact']!,
-          _isPrimaryContactMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_isPrimaryContactMeta);
-    }
     return context;
   }
 
@@ -1688,14 +1639,6 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
         DriftSqlType.string,
         data['${effectivePrefix}photo_url'],
       ),
-      relationshipType: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}relationship_type'],
-      )!,
-      isPrimaryContact: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_primary_contact'],
-      )!,
     );
   }
 
@@ -1717,8 +1660,6 @@ class Student extends DataClass implements Insertable<Student> {
   final String schoolYear;
   final String status;
   final String? photoUrl;
-  final String relationshipType;
-  final bool isPrimaryContact;
   const Student({
     required this.uuid,
     this.serverId,
@@ -1731,8 +1672,6 @@ class Student extends DataClass implements Insertable<Student> {
     required this.schoolYear,
     required this.status,
     this.photoUrl,
-    required this.relationshipType,
-    required this.isPrimaryContact,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1752,8 +1691,6 @@ class Student extends DataClass implements Insertable<Student> {
     if (!nullToAbsent || photoUrl != null) {
       map['photo_url'] = Variable<String>(photoUrl);
     }
-    map['relationship_type'] = Variable<String>(relationshipType);
-    map['is_primary_contact'] = Variable<bool>(isPrimaryContact);
     return map;
   }
 
@@ -1774,8 +1711,6 @@ class Student extends DataClass implements Insertable<Student> {
       photoUrl: photoUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(photoUrl),
-      relationshipType: Value(relationshipType),
-      isPrimaryContact: Value(isPrimaryContact),
     );
   }
 
@@ -1796,8 +1731,6 @@ class Student extends DataClass implements Insertable<Student> {
       schoolYear: serializer.fromJson<String>(json['schoolYear']),
       status: serializer.fromJson<String>(json['status']),
       photoUrl: serializer.fromJson<String?>(json['photoUrl']),
-      relationshipType: serializer.fromJson<String>(json['relationshipType']),
-      isPrimaryContact: serializer.fromJson<bool>(json['isPrimaryContact']),
     );
   }
   @override
@@ -1815,8 +1748,6 @@ class Student extends DataClass implements Insertable<Student> {
       'schoolYear': serializer.toJson<String>(schoolYear),
       'status': serializer.toJson<String>(status),
       'photoUrl': serializer.toJson<String?>(photoUrl),
-      'relationshipType': serializer.toJson<String>(relationshipType),
-      'isPrimaryContact': serializer.toJson<bool>(isPrimaryContact),
     };
   }
 
@@ -1832,8 +1763,6 @@ class Student extends DataClass implements Insertable<Student> {
     String? schoolYear,
     String? status,
     Value<String?> photoUrl = const Value.absent(),
-    String? relationshipType,
-    bool? isPrimaryContact,
   }) => Student(
     uuid: uuid ?? this.uuid,
     serverId: serverId.present ? serverId.value : this.serverId,
@@ -1846,8 +1775,6 @@ class Student extends DataClass implements Insertable<Student> {
     schoolYear: schoolYear ?? this.schoolYear,
     status: status ?? this.status,
     photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
-    relationshipType: relationshipType ?? this.relationshipType,
-    isPrimaryContact: isPrimaryContact ?? this.isPrimaryContact,
   );
   Student copyWithCompanion(StudentsCompanion data) {
     return Student(
@@ -1866,12 +1793,6 @@ class Student extends DataClass implements Insertable<Student> {
           : this.schoolYear,
       status: data.status.present ? data.status.value : this.status,
       photoUrl: data.photoUrl.present ? data.photoUrl.value : this.photoUrl,
-      relationshipType: data.relationshipType.present
-          ? data.relationshipType.value
-          : this.relationshipType,
-      isPrimaryContact: data.isPrimaryContact.present
-          ? data.isPrimaryContact.value
-          : this.isPrimaryContact,
     );
   }
 
@@ -1888,9 +1809,7 @@ class Student extends DataClass implements Insertable<Student> {
           ..write('section: $section, ')
           ..write('schoolYear: $schoolYear, ')
           ..write('status: $status, ')
-          ..write('photoUrl: $photoUrl, ')
-          ..write('relationshipType: $relationshipType, ')
-          ..write('isPrimaryContact: $isPrimaryContact')
+          ..write('photoUrl: $photoUrl')
           ..write(')'))
         .toString();
   }
@@ -1908,8 +1827,6 @@ class Student extends DataClass implements Insertable<Student> {
     schoolYear,
     status,
     photoUrl,
-    relationshipType,
-    isPrimaryContact,
   );
   @override
   bool operator ==(Object other) =>
@@ -1925,9 +1842,7 @@ class Student extends DataClass implements Insertable<Student> {
           other.section == this.section &&
           other.schoolYear == this.schoolYear &&
           other.status == this.status &&
-          other.photoUrl == this.photoUrl &&
-          other.relationshipType == this.relationshipType &&
-          other.isPrimaryContact == this.isPrimaryContact);
+          other.photoUrl == this.photoUrl);
 }
 
 class StudentsCompanion extends UpdateCompanion<Student> {
@@ -1942,8 +1857,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
   final Value<String> schoolYear;
   final Value<String> status;
   final Value<String?> photoUrl;
-  final Value<String> relationshipType;
-  final Value<bool> isPrimaryContact;
   final Value<int> rowid;
   const StudentsCompanion({
     this.uuid = const Value.absent(),
@@ -1957,8 +1870,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     this.schoolYear = const Value.absent(),
     this.status = const Value.absent(),
     this.photoUrl = const Value.absent(),
-    this.relationshipType = const Value.absent(),
-    this.isPrimaryContact = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   StudentsCompanion.insert({
@@ -1973,8 +1884,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     required String schoolYear,
     required String status,
     this.photoUrl = const Value.absent(),
-    required String relationshipType,
-    required bool isPrimaryContact,
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid),
        lrn = Value(lrn),
@@ -1984,9 +1893,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
        grade = Value(grade),
        section = Value(section),
        schoolYear = Value(schoolYear),
-       status = Value(status),
-       relationshipType = Value(relationshipType),
-       isPrimaryContact = Value(isPrimaryContact);
+       status = Value(status);
   static Insertable<Student> custom({
     Expression<String>? uuid,
     Expression<int>? serverId,
@@ -1999,8 +1906,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     Expression<String>? schoolYear,
     Expression<String>? status,
     Expression<String>? photoUrl,
-    Expression<String>? relationshipType,
-    Expression<bool>? isPrimaryContact,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2015,8 +1920,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
       if (schoolYear != null) 'school_year': schoolYear,
       if (status != null) 'status': status,
       if (photoUrl != null) 'photo_url': photoUrl,
-      if (relationshipType != null) 'relationship_type': relationshipType,
-      if (isPrimaryContact != null) 'is_primary_contact': isPrimaryContact,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2033,8 +1936,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     Value<String>? schoolYear,
     Value<String>? status,
     Value<String?>? photoUrl,
-    Value<String>? relationshipType,
-    Value<bool>? isPrimaryContact,
     Value<int>? rowid,
   }) {
     return StudentsCompanion(
@@ -2049,8 +1950,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
       schoolYear: schoolYear ?? this.schoolYear,
       status: status ?? this.status,
       photoUrl: photoUrl ?? this.photoUrl,
-      relationshipType: relationshipType ?? this.relationshipType,
-      isPrimaryContact: isPrimaryContact ?? this.isPrimaryContact,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2091,12 +1990,6 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     if (photoUrl.present) {
       map['photo_url'] = Variable<String>(photoUrl.value);
     }
-    if (relationshipType.present) {
-      map['relationship_type'] = Variable<String>(relationshipType.value);
-    }
-    if (isPrimaryContact.present) {
-      map['is_primary_contact'] = Variable<bool>(isPrimaryContact.value);
-    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2117,8 +2010,454 @@ class StudentsCompanion extends UpdateCompanion<Student> {
           ..write('schoolYear: $schoolYear, ')
           ..write('status: $status, ')
           ..write('photoUrl: $photoUrl, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GuardianStudentLinksTable extends GuardianStudentLinks
+    with TableInfo<$GuardianStudentLinksTable, GuardianStudentLink> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GuardianStudentLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _studentServerIdMeta = const VerificationMeta(
+    'studentServerId',
+  );
+  @override
+  late final GeneratedColumn<int> studentServerId = GeneratedColumn<int>(
+    'student_server_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _relationshipTypeMeta = const VerificationMeta(
+    'relationshipType',
+  );
+  @override
+  late final GeneratedColumn<String> relationshipType = GeneratedColumn<String>(
+    'relationship_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isPrimaryContactMeta = const VerificationMeta(
+    'isPrimaryContact',
+  );
+  @override
+  late final GeneratedColumn<bool> isPrimaryContact = GeneratedColumn<bool>(
+    'is_primary_contact',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_primary_contact" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notificationsEnabledMeta =
+      const VerificationMeta('notificationsEnabled');
+  @override
+  late final GeneratedColumn<bool> notificationsEnabled = GeneratedColumn<bool>(
+    'notifications_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("notifications_enabled" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uuid,
+    studentServerId,
+    relationshipType,
+    isPrimaryContact,
+    status,
+    notificationsEnabled,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'guardian_student_links';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<GuardianStudentLink> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('student_server_id')) {
+      context.handle(
+        _studentServerIdMeta,
+        studentServerId.isAcceptableOrUnknown(
+          data['student_server_id']!,
+          _studentServerIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_studentServerIdMeta);
+    }
+    if (data.containsKey('relationship_type')) {
+      context.handle(
+        _relationshipTypeMeta,
+        relationshipType.isAcceptableOrUnknown(
+          data['relationship_type']!,
+          _relationshipTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_relationshipTypeMeta);
+    }
+    if (data.containsKey('is_primary_contact')) {
+      context.handle(
+        _isPrimaryContactMeta,
+        isPrimaryContact.isAcceptableOrUnknown(
+          data['is_primary_contact']!,
+          _isPrimaryContactMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_isPrimaryContactMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('notifications_enabled')) {
+      context.handle(
+        _notificationsEnabledMeta,
+        notificationsEnabled.isAcceptableOrUnknown(
+          data['notifications_enabled']!,
+          _notificationsEnabledMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationsEnabledMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uuid};
+  @override
+  GuardianStudentLink map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GuardianStudentLink(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      studentServerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}student_server_id'],
+      )!,
+      relationshipType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relationship_type'],
+      )!,
+      isPrimaryContact: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_primary_contact'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      notificationsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}notifications_enabled'],
+      )!,
+    );
+  }
+
+  @override
+  $GuardianStudentLinksTable createAlias(String alias) {
+    return $GuardianStudentLinksTable(attachedDatabase, alias);
+  }
+}
+
+class GuardianStudentLink extends DataClass
+    implements Insertable<GuardianStudentLink> {
+  final String uuid;
+  final int studentServerId;
+  final String relationshipType;
+  final bool isPrimaryContact;
+  final String status;
+  final bool notificationsEnabled;
+  const GuardianStudentLink({
+    required this.uuid,
+    required this.studentServerId,
+    required this.relationshipType,
+    required this.isPrimaryContact,
+    required this.status,
+    required this.notificationsEnabled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['student_server_id'] = Variable<int>(studentServerId);
+    map['relationship_type'] = Variable<String>(relationshipType);
+    map['is_primary_contact'] = Variable<bool>(isPrimaryContact);
+    map['status'] = Variable<String>(status);
+    map['notifications_enabled'] = Variable<bool>(notificationsEnabled);
+    return map;
+  }
+
+  GuardianStudentLinksCompanion toCompanion(bool nullToAbsent) {
+    return GuardianStudentLinksCompanion(
+      uuid: Value(uuid),
+      studentServerId: Value(studentServerId),
+      relationshipType: Value(relationshipType),
+      isPrimaryContact: Value(isPrimaryContact),
+      status: Value(status),
+      notificationsEnabled: Value(notificationsEnabled),
+    );
+  }
+
+  factory GuardianStudentLink.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GuardianStudentLink(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      studentServerId: serializer.fromJson<int>(json['studentServerId']),
+      relationshipType: serializer.fromJson<String>(json['relationshipType']),
+      isPrimaryContact: serializer.fromJson<bool>(json['isPrimaryContact']),
+      status: serializer.fromJson<String>(json['status']),
+      notificationsEnabled: serializer.fromJson<bool>(
+        json['notificationsEnabled'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'studentServerId': serializer.toJson<int>(studentServerId),
+      'relationshipType': serializer.toJson<String>(relationshipType),
+      'isPrimaryContact': serializer.toJson<bool>(isPrimaryContact),
+      'status': serializer.toJson<String>(status),
+      'notificationsEnabled': serializer.toJson<bool>(notificationsEnabled),
+    };
+  }
+
+  GuardianStudentLink copyWith({
+    String? uuid,
+    int? studentServerId,
+    String? relationshipType,
+    bool? isPrimaryContact,
+    String? status,
+    bool? notificationsEnabled,
+  }) => GuardianStudentLink(
+    uuid: uuid ?? this.uuid,
+    studentServerId: studentServerId ?? this.studentServerId,
+    relationshipType: relationshipType ?? this.relationshipType,
+    isPrimaryContact: isPrimaryContact ?? this.isPrimaryContact,
+    status: status ?? this.status,
+    notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+  );
+  GuardianStudentLink copyWithCompanion(GuardianStudentLinksCompanion data) {
+    return GuardianStudentLink(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      studentServerId: data.studentServerId.present
+          ? data.studentServerId.value
+          : this.studentServerId,
+      relationshipType: data.relationshipType.present
+          ? data.relationshipType.value
+          : this.relationshipType,
+      isPrimaryContact: data.isPrimaryContact.present
+          ? data.isPrimaryContact.value
+          : this.isPrimaryContact,
+      status: data.status.present ? data.status.value : this.status,
+      notificationsEnabled: data.notificationsEnabled.present
+          ? data.notificationsEnabled.value
+          : this.notificationsEnabled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GuardianStudentLink(')
+          ..write('uuid: $uuid, ')
+          ..write('studentServerId: $studentServerId, ')
           ..write('relationshipType: $relationshipType, ')
           ..write('isPrimaryContact: $isPrimaryContact, ')
+          ..write('status: $status, ')
+          ..write('notificationsEnabled: $notificationsEnabled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uuid,
+    studentServerId,
+    relationshipType,
+    isPrimaryContact,
+    status,
+    notificationsEnabled,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GuardianStudentLink &&
+          other.uuid == this.uuid &&
+          other.studentServerId == this.studentServerId &&
+          other.relationshipType == this.relationshipType &&
+          other.isPrimaryContact == this.isPrimaryContact &&
+          other.status == this.status &&
+          other.notificationsEnabled == this.notificationsEnabled);
+}
+
+class GuardianStudentLinksCompanion
+    extends UpdateCompanion<GuardianStudentLink> {
+  final Value<String> uuid;
+  final Value<int> studentServerId;
+  final Value<String> relationshipType;
+  final Value<bool> isPrimaryContact;
+  final Value<String> status;
+  final Value<bool> notificationsEnabled;
+  final Value<int> rowid;
+  const GuardianStudentLinksCompanion({
+    this.uuid = const Value.absent(),
+    this.studentServerId = const Value.absent(),
+    this.relationshipType = const Value.absent(),
+    this.isPrimaryContact = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notificationsEnabled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GuardianStudentLinksCompanion.insert({
+    required String uuid,
+    required int studentServerId,
+    required String relationshipType,
+    required bool isPrimaryContact,
+    required String status,
+    required bool notificationsEnabled,
+    this.rowid = const Value.absent(),
+  }) : uuid = Value(uuid),
+       studentServerId = Value(studentServerId),
+       relationshipType = Value(relationshipType),
+       isPrimaryContact = Value(isPrimaryContact),
+       status = Value(status),
+       notificationsEnabled = Value(notificationsEnabled);
+  static Insertable<GuardianStudentLink> custom({
+    Expression<String>? uuid,
+    Expression<int>? studentServerId,
+    Expression<String>? relationshipType,
+    Expression<bool>? isPrimaryContact,
+    Expression<String>? status,
+    Expression<bool>? notificationsEnabled,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (studentServerId != null) 'student_server_id': studentServerId,
+      if (relationshipType != null) 'relationship_type': relationshipType,
+      if (isPrimaryContact != null) 'is_primary_contact': isPrimaryContact,
+      if (status != null) 'status': status,
+      if (notificationsEnabled != null)
+        'notifications_enabled': notificationsEnabled,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GuardianStudentLinksCompanion copyWith({
+    Value<String>? uuid,
+    Value<int>? studentServerId,
+    Value<String>? relationshipType,
+    Value<bool>? isPrimaryContact,
+    Value<String>? status,
+    Value<bool>? notificationsEnabled,
+    Value<int>? rowid,
+  }) {
+    return GuardianStudentLinksCompanion(
+      uuid: uuid ?? this.uuid,
+      studentServerId: studentServerId ?? this.studentServerId,
+      relationshipType: relationshipType ?? this.relationshipType,
+      isPrimaryContact: isPrimaryContact ?? this.isPrimaryContact,
+      status: status ?? this.status,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (studentServerId.present) {
+      map['student_server_id'] = Variable<int>(studentServerId.value);
+    }
+    if (relationshipType.present) {
+      map['relationship_type'] = Variable<String>(relationshipType.value);
+    }
+    if (isPrimaryContact.present) {
+      map['is_primary_contact'] = Variable<bool>(isPrimaryContact.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (notificationsEnabled.present) {
+      map['notifications_enabled'] = Variable<bool>(notificationsEnabled.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GuardianStudentLinksCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('studentServerId: $studentServerId, ')
+          ..write('relationshipType: $relationshipType, ')
+          ..write('isPrimaryContact: $isPrimaryContact, ')
+          ..write('status: $status, ')
+          ..write('notificationsEnabled: $notificationsEnabled, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3781,6 +4120,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $StudentsTable students = $StudentsTable(this);
+  late final $GuardianStudentLinksTable guardianStudentLinks =
+      $GuardianStudentLinksTable(this);
   late final $AttendanceRecordsTable attendanceRecords =
       $AttendanceRecordsTable(this);
   late final $AnnouncementsTable announcements = $AnnouncementsTable(this);
@@ -3796,6 +4137,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final StudentsDao studentsDao = StudentsDao(this as AppDatabase);
+  late final GuardianStudentLinksDao guardianStudentLinksDao =
+      GuardianStudentLinksDao(this as AppDatabase);
   late final AttendanceRecordsDao attendanceRecordsDao = AttendanceRecordsDao(
     this as AppDatabase,
   );
@@ -3815,6 +4158,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     schoolProfile,
     guardianProfile,
     students,
+    guardianStudentLinks,
     attendanceRecords,
     announcements,
     notifications,
@@ -4540,8 +4884,6 @@ typedef $$StudentsTableCreateCompanionBuilder =
       required String schoolYear,
       required String status,
       Value<String?> photoUrl,
-      required String relationshipType,
-      required bool isPrimaryContact,
       Value<int> rowid,
     });
 typedef $$StudentsTableUpdateCompanionBuilder =
@@ -4557,8 +4899,6 @@ typedef $$StudentsTableUpdateCompanionBuilder =
       Value<String> schoolYear,
       Value<String> status,
       Value<String?> photoUrl,
-      Value<String> relationshipType,
-      Value<bool> isPrimaryContact,
       Value<int> rowid,
     });
 
@@ -4655,16 +4995,6 @@ class $$StudentsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get relationshipType => $composableBuilder(
-    column: $table.relationshipType,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isPrimaryContact => $composableBuilder(
-    column: $table.isPrimaryContact,
-    builder: (column) => ColumnFilters(column),
-  );
-
   Expression<bool> attendanceRecordsRefs(
     Expression<bool> Function($$AttendanceRecordsTableFilterComposer f) f,
   ) {
@@ -4754,16 +5084,6 @@ class $$StudentsTableOrderingComposer
     column: $table.photoUrl,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<String> get relationshipType => $composableBuilder(
-    column: $table.relationshipType,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isPrimaryContact => $composableBuilder(
-    column: $table.isPrimaryContact,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$StudentsTableAnnotationComposer
@@ -4811,16 +5131,6 @@ class $$StudentsTableAnnotationComposer
 
   GeneratedColumn<String> get photoUrl =>
       $composableBuilder(column: $table.photoUrl, builder: (column) => column);
-
-  GeneratedColumn<String> get relationshipType => $composableBuilder(
-    column: $table.relationshipType,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get isPrimaryContact => $composableBuilder(
-    column: $table.isPrimaryContact,
-    builder: (column) => column,
-  );
 
   Expression<T> attendanceRecordsRefs<T extends Object>(
     Expression<T> Function($$AttendanceRecordsTableAnnotationComposer a) f,
@@ -4888,8 +5198,6 @@ class $$StudentsTableTableManager
                 Value<String> schoolYear = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> photoUrl = const Value.absent(),
-                Value<String> relationshipType = const Value.absent(),
-                Value<bool> isPrimaryContact = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => StudentsCompanion(
                 uuid: uuid,
@@ -4903,8 +5211,6 @@ class $$StudentsTableTableManager
                 schoolYear: schoolYear,
                 status: status,
                 photoUrl: photoUrl,
-                relationshipType: relationshipType,
-                isPrimaryContact: isPrimaryContact,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4920,8 +5226,6 @@ class $$StudentsTableTableManager
                 required String schoolYear,
                 required String status,
                 Value<String?> photoUrl = const Value.absent(),
-                required String relationshipType,
-                required bool isPrimaryContact,
                 Value<int> rowid = const Value.absent(),
               }) => StudentsCompanion.insert(
                 uuid: uuid,
@@ -4935,8 +5239,6 @@ class $$StudentsTableTableManager
                 schoolYear: schoolYear,
                 status: status,
                 photoUrl: photoUrl,
-                relationshipType: relationshipType,
-                isPrimaryContact: isPrimaryContact,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4997,6 +5299,249 @@ typedef $$StudentsTableProcessedTableManager =
       (Student, $$StudentsTableReferences),
       Student,
       PrefetchHooks Function({bool attendanceRecordsRefs})
+    >;
+typedef $$GuardianStudentLinksTableCreateCompanionBuilder =
+    GuardianStudentLinksCompanion Function({
+      required String uuid,
+      required int studentServerId,
+      required String relationshipType,
+      required bool isPrimaryContact,
+      required String status,
+      required bool notificationsEnabled,
+      Value<int> rowid,
+    });
+typedef $$GuardianStudentLinksTableUpdateCompanionBuilder =
+    GuardianStudentLinksCompanion Function({
+      Value<String> uuid,
+      Value<int> studentServerId,
+      Value<String> relationshipType,
+      Value<bool> isPrimaryContact,
+      Value<String> status,
+      Value<bool> notificationsEnabled,
+      Value<int> rowid,
+    });
+
+class $$GuardianStudentLinksTableFilterComposer
+    extends Composer<_$AppDatabase, $GuardianStudentLinksTable> {
+  $$GuardianStudentLinksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get studentServerId => $composableBuilder(
+    column: $table.studentServerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relationshipType => $composableBuilder(
+    column: $table.relationshipType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPrimaryContact => $composableBuilder(
+    column: $table.isPrimaryContact,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get notificationsEnabled => $composableBuilder(
+    column: $table.notificationsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$GuardianStudentLinksTableOrderingComposer
+    extends Composer<_$AppDatabase, $GuardianStudentLinksTable> {
+  $$GuardianStudentLinksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get studentServerId => $composableBuilder(
+    column: $table.studentServerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relationshipType => $composableBuilder(
+    column: $table.relationshipType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPrimaryContact => $composableBuilder(
+    column: $table.isPrimaryContact,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get notificationsEnabled => $composableBuilder(
+    column: $table.notificationsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$GuardianStudentLinksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GuardianStudentLinksTable> {
+  $$GuardianStudentLinksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<int> get studentServerId => $composableBuilder(
+    column: $table.studentServerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get relationshipType => $composableBuilder(
+    column: $table.relationshipType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isPrimaryContact => $composableBuilder(
+    column: $table.isPrimaryContact,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get notificationsEnabled => $composableBuilder(
+    column: $table.notificationsEnabled,
+    builder: (column) => column,
+  );
+}
+
+class $$GuardianStudentLinksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $GuardianStudentLinksTable,
+          GuardianStudentLink,
+          $$GuardianStudentLinksTableFilterComposer,
+          $$GuardianStudentLinksTableOrderingComposer,
+          $$GuardianStudentLinksTableAnnotationComposer,
+          $$GuardianStudentLinksTableCreateCompanionBuilder,
+          $$GuardianStudentLinksTableUpdateCompanionBuilder,
+          (
+            GuardianStudentLink,
+            BaseReferences<
+              _$AppDatabase,
+              $GuardianStudentLinksTable,
+              GuardianStudentLink
+            >,
+          ),
+          GuardianStudentLink,
+          PrefetchHooks Function()
+        > {
+  $$GuardianStudentLinksTableTableManager(
+    _$AppDatabase db,
+    $GuardianStudentLinksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GuardianStudentLinksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GuardianStudentLinksTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$GuardianStudentLinksTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> uuid = const Value.absent(),
+                Value<int> studentServerId = const Value.absent(),
+                Value<String> relationshipType = const Value.absent(),
+                Value<bool> isPrimaryContact = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> notificationsEnabled = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GuardianStudentLinksCompanion(
+                uuid: uuid,
+                studentServerId: studentServerId,
+                relationshipType: relationshipType,
+                isPrimaryContact: isPrimaryContact,
+                status: status,
+                notificationsEnabled: notificationsEnabled,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uuid,
+                required int studentServerId,
+                required String relationshipType,
+                required bool isPrimaryContact,
+                required String status,
+                required bool notificationsEnabled,
+                Value<int> rowid = const Value.absent(),
+              }) => GuardianStudentLinksCompanion.insert(
+                uuid: uuid,
+                studentServerId: studentServerId,
+                relationshipType: relationshipType,
+                isPrimaryContact: isPrimaryContact,
+                status: status,
+                notificationsEnabled: notificationsEnabled,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$GuardianStudentLinksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $GuardianStudentLinksTable,
+      GuardianStudentLink,
+      $$GuardianStudentLinksTableFilterComposer,
+      $$GuardianStudentLinksTableOrderingComposer,
+      $$GuardianStudentLinksTableAnnotationComposer,
+      $$GuardianStudentLinksTableCreateCompanionBuilder,
+      $$GuardianStudentLinksTableUpdateCompanionBuilder,
+      (
+        GuardianStudentLink,
+        BaseReferences<
+          _$AppDatabase,
+          $GuardianStudentLinksTable,
+          GuardianStudentLink
+        >,
+      ),
+      GuardianStudentLink,
+      PrefetchHooks Function()
     >;
 typedef $$AttendanceRecordsTableCreateCompanionBuilder =
     AttendanceRecordsCompanion Function({
@@ -6013,6 +6558,8 @@ class $AppDatabaseManager {
       $$GuardianProfileTableTableManager(_db, _db.guardianProfile);
   $$StudentsTableTableManager get students =>
       $$StudentsTableTableManager(_db, _db.students);
+  $$GuardianStudentLinksTableTableManager get guardianStudentLinks =>
+      $$GuardianStudentLinksTableTableManager(_db, _db.guardianStudentLinks);
   $$AttendanceRecordsTableTableManager get attendanceRecords =>
       $$AttendanceRecordsTableTableManager(_db, _db.attendanceRecords);
   $$AnnouncementsTableTableManager get announcements =>

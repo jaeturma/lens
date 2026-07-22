@@ -7,6 +7,7 @@ import 'package:mobile/core/app_version_provider.dart';
 import 'package:mobile/core/database/app_database.dart';
 import 'package:mobile/core/database/database_provider.dart';
 import 'package:mobile/features/auth/application/session_controller.dart';
+import 'package:mobile/features/sync/data/sync_api.dart';
 
 import '../../support/app_test_harness.dart';
 
@@ -47,6 +48,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(database),
           appVersionProvider.overrideWith((ref) async => '0.1.0'),
           sessionControllerProvider.overrideWith(FakeAuthenticatedSession.new),
+          syncApiProvider.overrideWithValue(NoOpSyncApi()),
         ],
         child: const LensApp(),
       ),
@@ -70,6 +72,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(database),
           appVersionProvider.overrideWith((ref) async => '0.1.0'),
           sessionControllerProvider.overrideWith(FakeAuthenticatedSession.new),
+          syncApiProvider.overrideWithValue(NoOpSyncApi()),
         ],
         child: const LensApp(),
       ),
@@ -99,6 +102,7 @@ void main() {
             sessionControllerProvider.overrideWith(
               FakeAuthenticatedSession.new,
             ),
+            syncApiProvider.overrideWithValue(NoOpSyncApi()),
           ],
           child: const LensApp(),
         ),
@@ -123,6 +127,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(database),
           appVersionProvider.overrideWith((ref) async => '0.1.0'),
           sessionControllerProvider.overrideWith(FakeAuthenticatedSession.new),
+          syncApiProvider.overrideWithValue(NoOpSyncApi()),
         ],
         child: const LensApp(),
       ),

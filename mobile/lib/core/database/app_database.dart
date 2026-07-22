@@ -17,6 +17,7 @@ part 'app_database.g.dart';
     SchoolProfile,
     GuardianProfile,
     Students,
+    GuardianStudentLinks,
     AttendanceRecords,
     Announcements,
     Notifications,
@@ -27,6 +28,7 @@ part 'app_database.g.dart';
     SchoolProfileDao,
     GuardianProfileDao,
     StudentsDao,
+    GuardianStudentLinksDao,
     AttendanceRecordsDao,
     AnnouncementsDao,
     NotificationsDao,
@@ -51,6 +53,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> clearGuardianOwnedData() {
     return transaction(() async {
       await delete(guardianProfile).go();
+      await delete(guardianStudentLinks).go();
       await delete(students).go();
       await delete(attendanceRecords).go();
       await delete(announcements).go();

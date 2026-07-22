@@ -28,6 +28,7 @@
 - school_profile
 - guardian_profile
 - students
+- guardian_student_links
 - attendance_records
 - announcements
 - notifications

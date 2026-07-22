@@ -10,6 +10,7 @@ import 'package:mobile/core/database/database_provider.dart';
 import 'package:mobile/core/storage/token_storage.dart';
 import 'package:mobile/features/auth/application/session_controller.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
+import 'package:mobile/features/sync/data/sync_api.dart';
 
 import '../../support/app_test_harness.dart';
 
@@ -84,6 +85,7 @@ void main() {
             ),
             authApiProvider.overrideWithValue(authApi),
             tokenStorageProvider.overrideWithValue(tokenStorage),
+            syncApiProvider.overrideWithValue(NoOpSyncApi()),
           ],
           child: const LensApp(),
         ),

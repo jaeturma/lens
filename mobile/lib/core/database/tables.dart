@@ -48,17 +48,18 @@ class GuardianProfile extends Table {
   Set<Column> get primaryKey => {uuid};
 }
 
-/// A guardian's linked children, flattened with their own
-/// `guardian_student_link` fields — matching the shape
-/// `LinkedStudentResource` already sends over bootstrap, since a guardian
-/// only ever sees their own link for a given child.
+/// A student's own record — exactly the `student` sync resource's payload
+/// shape (`docs/api/SYNC.md`), one table per independent server resource
+/// type (WP-07-08), not flattened with the guardian's link to them (see
+/// [GuardianStudentLinks]) — a `student`-type change carries none of the
+/// link's own fields, so a table requiring them couldn't apply one alone.
 ///
-/// [serverId] is nullable: bootstrap (`docs/api/SYNC.md`) never exposes a
-/// student's numeric database id, only `uuid` — it only appears later, as
-/// `resource_id` on a `student`-type change-feed entry. Cross-referencing
-/// `attendance_daily_summary` payloads (which key `student_id` by that same
-/// numeric id, not `uuid`) needs it, so it is carried here once known
-/// rather than invented at bootstrap time.
+/// [serverId] is nullable: bootstrap never exposes a student's numeric
+/// database id, only `uuid` — it only appears later, as `resource_id` on a
+/// `student`-type change-feed entry. Cross-referencing
+/// `attendance_daily_summary`/`guardian_student_link` payloads (which key
+/// by that same numeric id, not `uuid`) needs it, so it is carried here
+/// once known rather than invented at bootstrap time.
 class Students extends Table {
   TextColumn get uuid => text()();
   IntColumn get serverId => integer().nullable().unique()();
@@ -71,8 +72,26 @@ class Students extends Table {
   TextColumn get schoolYear => text()();
   TextColumn get status => text()();
   TextColumn get photoUrl => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {uuid};
+}
+
+/// The guardian's own link to a student — the `guardian_student_link` sync
+/// resource (`docs/api/SYNC.md`), kept as its own table rather than
+/// flattened into [Students] (see there for why). [studentServerId] is a
+/// plain indexed column, not a hard foreign key: the payload only ever
+/// gives the student's numeric id, and — since a brand-new student's own
+/// `student`-type and `guardian_student_link`-type entries can arrive in
+/// either order within the same synced page — a hard FK could reject a
+/// link that arrives fractionally before its student row.
+class GuardianStudentLinks extends Table {
+  TextColumn get uuid => text()();
+  IntColumn get studentServerId => integer().unique()();
   TextColumn get relationshipType => text()();
   BoolColumn get isPrimaryContact => boolean()();
+  TextColumn get status => text()();
+  BoolColumn get notificationsEnabled => boolean()();
 
   @override
   Set<Column> get primaryKey => {uuid};

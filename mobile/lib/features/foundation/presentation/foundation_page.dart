@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/database/app_database.dart';
 import '../../auth/application/session_controller.dart';
+import '../../sync/application/sync_engine.dart';
 
 class FoundationPage extends ConsumerWidget {
   const FoundationPage({required this.school, super.key});
@@ -12,6 +13,13 @@ class FoundationPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // "Support startup": fires once, the first time this screen renders
+    // after login. Deliberately not awaited/surfaced here — a failure
+    // just means the next trigger (pull-to-refresh, next startup) tries
+    // again; anything it does write reaches the screen through the
+    // tables it updates, not through this.
+    ref.watch(startupSyncProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(school.name),
@@ -35,53 +43,59 @@ class FoundationPage extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
-        child: Center(
+        // "Support pull-to-refresh": the placeholder home screen's stand-in
+        // for it, until WP-07-09 builds the real one.
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(syncEngineProvider).sync(),
           child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (school.maintenanceMode) ...[
-                    _MaintenanceBanner(message: school.maintenanceMessage),
-                    const SizedBox(height: 16),
-                  ],
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Icon(
-                            Icons.school_outlined,
-                            size: 72,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Foundation Ready',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'The Flutter application now has routing, state management, secure token storage, API configuration, reusable states, and a testable feature-first structure.',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          _InfoRow(label: 'API', value: AppConfig.apiBaseUrl),
-                          const _InfoRow(label: 'Target', value: 'Android'),
-                          const _InfoRow(
-                            label: 'Architecture',
-                            value: 'Feature-first',
-                          ),
-                        ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (school.maintenanceMode) ...[
+                      _MaintenanceBanner(message: school.maintenanceMessage),
+                      const SizedBox(height: 16),
+                    ],
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Icon(
+                              Icons.school_outlined,
+                              size: 72,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Foundation Ready',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'The Flutter application now has routing, state management, secure token storage, API configuration, reusable states, and a testable feature-first structure.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            _InfoRow(label: 'API', value: AppConfig.apiBaseUrl),
+                            const _InfoRow(label: 'Target', value: 'Android'),
+                            const _InfoRow(
+                              label: 'Architecture',
+                              value: 'Feature-first',
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

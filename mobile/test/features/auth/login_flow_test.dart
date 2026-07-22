@@ -14,6 +14,7 @@ import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/school_bootstrap/data/bootstrap_api.dart';
 import 'package:mobile/features/school_bootstrap/data/resolved_guardian.dart';
 import 'package:mobile/features/school_setup/data/resolved_school.dart';
+import 'package:mobile/features/sync/data/sync_api.dart';
 
 import '../../support/app_test_harness.dart';
 
@@ -45,7 +46,11 @@ class _FakeBootstrapApi extends BootstrapApi {
 
   @override
   Future<BootstrapResult> fetch() async {
-    return BootstrapResult(school: _school, guardian: _resolvedGuardian);
+    return BootstrapResult(
+      school: _school,
+      guardian: _resolvedGuardian,
+      nextCursor: 'cursor-1',
+    );
   }
 }
 
@@ -174,6 +179,7 @@ void main() {
               ),
             ),
             tokenStorageProvider.overrideWithValue(tokenStorage),
+            syncApiProvider.overrideWithValue(NoOpSyncApi()),
           ],
           child: const LensApp(),
         ),

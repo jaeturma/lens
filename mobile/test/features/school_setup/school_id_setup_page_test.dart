@@ -9,6 +9,7 @@ import 'package:mobile/core/database/database_provider.dart';
 import 'package:mobile/features/auth/application/session_controller.dart';
 import 'package:mobile/features/school_setup/data/resolved_school.dart';
 import 'package:mobile/features/school_setup/data/school_resolver_api.dart';
+import 'package:mobile/features/sync/data/sync_api.dart';
 
 import '../../support/app_test_harness.dart';
 
@@ -73,6 +74,7 @@ void main() {
             sessionControllerProvider.overrideWith(
               FakeAuthenticatedSession.new,
             ),
+            syncApiProvider.overrideWithValue(NoOpSyncApi()),
           ],
           child: const LensApp(),
         ),

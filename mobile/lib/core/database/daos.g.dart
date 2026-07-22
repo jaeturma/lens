@@ -54,6 +54,23 @@ class StudentsDaoManager {
       $$StudentsTableTableManager(_db.attachedDatabase, _db.students);
 }
 
+mixin _$GuardianStudentLinksDaoMixin on DatabaseAccessor<AppDatabase> {
+  $GuardianStudentLinksTable get guardianStudentLinks =>
+      attachedDatabase.guardianStudentLinks;
+  GuardianStudentLinksDaoManager get managers =>
+      GuardianStudentLinksDaoManager(this);
+}
+
+class GuardianStudentLinksDaoManager {
+  final _$GuardianStudentLinksDaoMixin _db;
+  GuardianStudentLinksDaoManager(this._db);
+  $$GuardianStudentLinksTableTableManager get guardianStudentLinks =>
+      $$GuardianStudentLinksTableTableManager(
+        _db.attachedDatabase,
+        _db.guardianStudentLinks,
+      );
+}
+
 mixin _$AttendanceRecordsDaoMixin on DatabaseAccessor<AppDatabase> {
   $StudentsTable get students => attachedDatabase.students;
   $AttendanceRecordsTable get attendanceRecords =>

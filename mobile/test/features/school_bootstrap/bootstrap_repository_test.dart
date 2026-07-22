@@ -48,7 +48,11 @@ void main() {
 
       final repository = BootstrapRepository(
         _FakeBootstrapApi(
-          const BootstrapResult(school: _resolvedSchool, guardian: null),
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            nextCursor: 'cursor-1',
+          ),
         ),
         database,
       );
@@ -65,6 +69,29 @@ void main() {
   );
 
   test(
+    'sync saves the response\'s next_cursor as the sync engine\'s starting point (WP-07-08)',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final repository = BootstrapRepository(
+        _FakeBootstrapApi(
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            nextCursor: 'cursor-from-bootstrap',
+          ),
+        ),
+        database,
+      );
+
+      await repository.sync();
+
+      expect(await database.syncStateDao.readCursor(), 'cursor-from-bootstrap');
+    },
+  );
+
+  test(
     'a repeated sync updates the cached school profile rather than duplicating it',
     () async {
       final database = AppDatabase(NativeDatabase.memory());
@@ -72,7 +99,11 @@ void main() {
 
       await BootstrapRepository(
         _FakeBootstrapApi(
-          const BootstrapResult(school: _resolvedSchool, guardian: null),
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            nextCursor: 'cursor-1',
+          ),
         ),
         database,
       ).sync();
@@ -93,6 +124,7 @@ void main() {
               minimumAppVersion: '0.2.0',
             ),
             guardian: null,
+            nextCursor: 'cursor-2',
           ),
         ),
         database,
@@ -116,6 +148,7 @@ void main() {
         const BootstrapResult(
           school: _resolvedSchool,
           guardian: _resolvedGuardian,
+          nextCursor: 'cursor-1',
         ),
       ),
       database,
@@ -137,7 +170,11 @@ void main() {
 
       final repository = BootstrapRepository(
         _FakeBootstrapApi(
-          const BootstrapResult(school: _resolvedSchool, guardian: null),
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            nextCursor: 'cursor-1',
+          ),
         ),
         database,
       );

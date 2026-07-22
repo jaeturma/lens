@@ -11,17 +11,28 @@ final bootstrapApiProvider = Provider<BootstrapApi>((ref) {
 });
 
 class BootstrapResult {
-  const BootstrapResult({required this.school, required this.guardian});
+  const BootstrapResult({
+    required this.school,
+    required this.guardian,
+    required this.nextCursor,
+  });
 
   final ResolvedSchool school;
   final ResolvedGuardian? guardian;
+
+  /// The change-feed position as of this bootstrap call
+  /// (`docs/api/SYNC.md`) — the incremental sync engine's (WP-07-08)
+  /// starting point, so its first call never re-fetches what bootstrap
+  /// already returned.
+  final String nextCursor;
 }
 
 /// `GET /sync/bootstrap` (`docs/api/SYNC.md`) — authenticated, so this is
 /// only ever called once a guardian session exists (WP-07-06, right after
-/// login). This package's own scope is the `school` and `guardian` fields
-/// of that response; the rest (`children`, `announcements`, `next_cursor`)
-/// belongs to whichever later work package consumes it (WP-07-08/09/11).
+/// login). This package's own scope is the `school`, `guardian`, and
+/// `next_cursor` fields of that response; the rest (`children`,
+/// `announcements`) belongs to whichever later work package consumes it
+/// (WP-07-09/11).
 class BootstrapApi {
   BootstrapApi(this._dio);
 
@@ -40,7 +51,11 @@ class BootstrapApi {
           ? null
           : ResolvedGuardian.fromJson(guardianJson);
 
-      return BootstrapResult(school: school, guardian: guardian);
+      return BootstrapResult(
+        school: school,
+        guardian: guardian,
+        nextCursor: data['next_cursor'] as String,
+      );
     } on DioException catch (exception) {
       throw ApiException.fromDioException(exception);
     }

@@ -32,5 +32,11 @@ class BootstrapRepository {
     if (guardian != null) {
       await _database.guardianProfileDao.upsert(guardian.toCompanion());
     }
+
+    // The incremental sync engine's (WP-07-08) starting point — without
+    // this, its first call would have no cursor of its own and would have
+    // to fall back to SyncCursor.initial(), re-walking the guardian's
+    // entire history instead of picking up from here.
+    await _database.syncStateDao.saveCursor(result.nextCursor);
   }
 }

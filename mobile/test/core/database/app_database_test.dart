@@ -63,8 +63,6 @@ void main() {
         section: 'Diamond',
         schoolYear: '2026-2027',
         status: 'active',
-        relationshipType: 'mother',
-        isPrimaryContact: true,
       );
 
       await database.studentsDao.upsert(entry);
@@ -115,8 +113,6 @@ void main() {
           section: 'Diamond',
           schoolYear: '2026-2027',
           status: 'active',
-          relationshipType: 'mother',
-          isPrimaryContact: true,
         ),
       );
 
