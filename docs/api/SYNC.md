@@ -43,7 +43,9 @@ does not advance past data it has not actually received.
 ## Bootstrap (WP-01-08)
 
 `GET /api/v1/sync/bootstrap` — requires a valid Sanctum bearer token for a
-guardian account (`403` for any other role). Gated by the `school.mobile`
+guardian account (`403` for any other role; `401` if the calling
+guardian's own profile has been deactivated — `guardian.active`, WP-08-03,
+see the `guardian` resource section below). Gated by the `school.mobile`
 middleware (maintenance/mobile-disabled/version, same as login — see
 `docs/api/AUTHENTICATION.md`) and the `sync` rate limiter (30
 requests/minute per user). Returns the school profile, the authenticated
@@ -269,10 +271,15 @@ table, distinct from `User.email` (the login credential returned by
 `bootstrap`'s `user` field) — see WP-02-02 Implementation Notes for why
 these are not the same column. Created via the admin web UI (WP-02-05).
 `status` affects both login (`docs/api/AUTHENTICATION.md`'s rejection for
-an inactive profile) and sync (an inactive guardian can still hold a valid
-token until it's revoked, but their own `guardian`-type entries are scoped
-to their own record either way — inactive status does not currently hide
-a guardian's own profile from themselves over sync).
+an inactive profile) and every authenticated mobile request thereafter:
+`App\Http\Middleware\EnsureGuardianAccountIsActive` (`guardian.active`,
+WP-08-03) rejects `bootstrap`, `changes`, `auth/me`, and the notification
+endpoints with `401` the moment a guardian's profile is deactivated, even
+for a token issued while still active — closing what had been an
+unresolved gap since WP-02-02 (a deactivated guardian's existing token
+used to keep working against every endpoint but login indefinitely).
+`logout` is deliberately excluded, so a deactivated guardian can still
+revoke their own token.
 
 ### `guardian_student_link` (WP-02-03)
 

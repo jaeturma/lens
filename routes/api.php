@@ -25,12 +25,12 @@ Route::prefix('v1')->group(function (): void {
             ->middleware(['school.mobile', 'throttle:mobile-login']);
 
         Route::middleware('auth:sanctum')->group(function (): void {
-            Route::get('me', MeController::class);
+            Route::get('me', MeController::class)->middleware('guardian.active');
             Route::post('logout', LogoutController::class);
         });
     });
 
-    Route::prefix('sync')->middleware(['auth:sanctum', 'school.mobile', 'throttle:sync'])->group(function (): void {
+    Route::prefix('sync')->middleware(['auth:sanctum', 'guardian.active', 'school.mobile', 'throttle:sync'])->group(function (): void {
         Route::get('bootstrap', BootstrapController::class);
         Route::get('changes', ChangesController::class);
     });
@@ -39,7 +39,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('scans', IngestRfidScanController::class);
     });
 
-    Route::prefix('notifications')->middleware(['auth:sanctum', 'school.mobile', 'throttle:device-tokens'])->group(function (): void {
+    Route::prefix('notifications')->middleware(['auth:sanctum', 'guardian.active', 'school.mobile', 'throttle:device-tokens'])->group(function (): void {
         Route::post('device-tokens', RegisterDeviceTokenController::class);
         Route::delete('device-tokens', RevokeDeviceTokenController::class);
         Route::patch('{uuid}/read', MarkNotificationReadController::class)

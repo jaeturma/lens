@@ -71,12 +71,25 @@ school-bound.
 `GET /api/v1/auth/me` — requires a valid Sanctum bearer token
 (`Authorization: Bearer {token}`). Returns the authenticated user via the
 same shape as `login`'s `user` field. `401` if the token is missing,
-invalid, or already revoked.
+invalid, already revoked, or (`guardian.active` middleware, WP-08-03)
+belongs to a guardian whose `Guardian` profile has since been deactivated
+— a token issued before deactivation stops working on its very next
+request rather than remaining valid indefinitely. This is deliberately the
+same status code as an expired/revoked token: `SessionController.build()`
+on the Flutter side (WP-07-07) already treats any `401` from this endpoint
+as "session no longer valid, return to login," and a deactivated guardian
+is meant to hit that exact path.
+
+The same `guardian.active` check also gates every `sync` and
+`notifications` endpoint below (see `docs/api/SYNC.md`) — a deactivated
+guardian's token is rejected there too, not only at `/auth/me`.
 
 ## Logout
 
-`POST /api/v1/auth/logout` — requires a valid Sanctum bearer token. Revokes
-the token used to make the request (not other active tokens/devices).
+`POST /api/v1/auth/logout` — requires a valid Sanctum bearer token, but
+**not** `guardian.active` — a deactivated guardian can still explicitly
+revoke their own token. Revokes the token used to make the request (not
+other active tokens/devices).
 
 ## App Version Header
 
