@@ -21,6 +21,7 @@ void main() {
       AppRoutes.announcements,
       AppRoutes.announcementDetail,
       AppRoutes.notifications,
+      AppRoutes.profile,
     ]);
   });
 }

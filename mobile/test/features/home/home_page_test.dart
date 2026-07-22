@@ -209,6 +209,41 @@ void main() {
     await disposeAppUnderTest(tester);
   });
 
+  testWidgets('the profile action opens the profile screen', (tester) async {
+    final database = await _seedBoundSchool();
+    await database.guardianProfileDao.upsert(
+      GuardianProfileCompanion.insert(
+        uuid: 'guardian-uuid',
+        name: 'Maria Dela Cruz',
+        email: 'maria@example.com',
+        mobileNumber: '09171234567',
+        status: 'active',
+        notifyAttendance: true,
+        notifyAnnouncements: true,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          appVersionProvider.overrideWith((ref) async => '0.1.0'),
+          sessionControllerProvider.overrideWith(FakeAuthenticatedSession.new),
+          syncApiProvider.overrideWithValue(NoOpSyncApi()),
+        ],
+        child: const LensApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Maria Dela Cruz'), findsOneWidget);
+
+    await disposeAppUnderTest(tester);
+  });
+
   testWidgets(
     'the notifications action shows an unread badge and opens the inbox',
     (tester) async {
