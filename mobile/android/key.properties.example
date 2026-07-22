@@ -1,0 +1,14 @@
+# WP-08-07: copy this file to android/key.properties (gitignored — never
+# commit the real file) and fill in the values for your own release
+# keystore. Generate the keystore itself with keytool, e.g.:
+#
+#   keytool -genkey -v -keystore lens-release.jks -keyalg RSA -keysize 2048 \
+#     -validity 10000 -alias lens
+#
+# Keep the .jks file and both passwords outside the repository — a
+# password manager or a CI secret store, not this directory.
+
+storeFile=/absolute/path/to/lens-release.jks
+storePassword=changeme
+keyAlias=lens
+keyPassword=changeme
