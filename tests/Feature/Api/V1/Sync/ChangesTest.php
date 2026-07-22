@@ -1,8 +1,12 @@
 <?php
 
+use App\Actions\Announcements\PublishAnnouncement;
+use App\Actions\Announcements\WithdrawAnnouncement;
 use App\Actions\Sync\RecordSyncChange;
+use App\Enums\AnnouncementAudienceType;
 use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\SyncChangeAction;
+use App\Models\Announcement;
 use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
@@ -181,6 +185,61 @@ test('incremental sync only returns attendance changes for the guardian\'s own a
     $changes = $response->json('data.changes');
     expect($changes)->toHaveCount(1);
     expect($changes[0]['resource_id'])->toBe($ownSummary->id);
+});
+
+test('incremental sync only returns announcement changes matching the guardian\'s audience', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $matchingStudent = Student::factory()->create(['grade' => 'Grade 7']);
+    GuardianStudentLink::factory()->for($guardian)->for($matchingStudent)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $cursorAfterSetup = SyncCursor::fromSequence((int) SyncChange::query()->max('id'));
+
+    $matchingAnnouncement = Announcement::factory()->create([
+        'audience_type' => AnnouncementAudienceType::Grade,
+        'audience_grade' => 'Grade 7',
+    ]);
+    (new PublishAnnouncement)($matchingAnnouncement);
+
+    $nonMatchingAnnouncement = Announcement::factory()->create([
+        'audience_type' => AnnouncementAudienceType::Grade,
+        'audience_grade' => 'Grade 8',
+    ]);
+    (new PublishAnnouncement)($nonMatchingAnnouncement);
+
+    $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
+
+    $response->assertOk();
+    $changes = $response->json('data.changes');
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['resource_id'])->toBe($matchingAnnouncement->id);
+    expect($changes[0]['action'])->toBe('created');
+});
+
+test('withdrawing an announcement synchronizes as revoked to a matching guardian', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $announcement = Announcement::factory()->create(['audience_type' => AnnouncementAudienceType::All]);
+    (new PublishAnnouncement)($announcement);
+
+    $cursorAfterSetup = SyncCursor::fromSequence((int) SyncChange::query()->max('id'));
+
+    (new WithdrawAnnouncement)($announcement);
+
+    $response = $this->withToken($token)->getJson(syncChangesUri((string) $cursorAfterSetup));
+
+    $response->assertOk();
+    $changes = $response->json('data.changes');
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]['resource_type'])->toBe('announcement');
+    expect($changes[0]['action'])->toBe('revoked');
 });
 
 test('a non-guardian account is rejected from incremental sync', function () {

@@ -146,12 +146,31 @@ caller (WP-05-04):
   native `<select multiple>` for the Students case — no new component or
   package, matching "without campaign-level complexity").
 
-### Not Yet Implemented
+## Parent Announcement Sync Contract (WP-05-04)
 
-The guardian-facing sync contract (WP-05-04) is the remaining phase-05
-work package. Every announcement, published or not, and regardless of
-audience, is still invisible to every guardian — `ScopeChangesToGuardian`
-has no `announcement` branch yet, and nothing calls
-`GuardianMatchesAnnouncementAudience` from a guardian-facing endpoint.
-That wiring, plus pairing audience matching with a `Published`-only
-check, is WP-05-04's job.
+Guardians now see audience-matching announcements over the mobile sync
+API — see `docs/api/SYNC.md`'s `announcement` section for the full
+contract (payload shape, stable ID, local deletion behavior, and the
+bootstrap/incremental split). Summary of what changed:
+
+- `App\Actions\Sync\ScopeChangesToGuardian` gained an `announcement`
+  branch: re-resolves `GuardianMatchesAnnouncementAudience` against the
+  **live** `Announcement` (via the change's polymorphic `resource`
+  relation), not a stale payload snapshot — audience/pivot membership can
+  change after the sync entry was written. A `Draft` never reaches this
+  branch (the observer already never records one).
+- Bootstrap's response gained a top-level `announcements` array — every
+  currently `Published` announcement matching any of the guardian's
+  active linked students, resolved fresh on every call (not a per-child
+  field, since one announcement can match through several children).
+- **Local deletion, decided**: withdrawn/expired announcements are
+  **removed locally**, not kept-but-hidden — both `revoked` (withdraw)
+  and `expired` (both expiration paths) were already tombstone actions
+  per the existing "Tombstones" convention (WP-01-07), so this package
+  just confirmed announcements follow it rather than inventing an
+  archive/history feature nothing asked for.
+
+phase 5 (Announcements) is now complete — all four work packages
+(WP-05-01 through WP-05-04) are implemented (Laravel/API layer; Flutter
+consumption of this contract is separate follow-up work, same split
+WP-04-06 used for attendance).

@@ -1,10 +1,14 @@
 <?php
 
+use App\Actions\Announcements\PublishAnnouncement;
 use App\Actions\Attendance\ProcessRfidScan;
 use App\Actions\RfidCards\AssignRfidCard;
+use App\Enums\AnnouncementAudienceType;
+use App\Enums\AnnouncementStatus;
 use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\RfidDeviceDirectionMode;
 use App\Enums\RfidScanClassification;
+use App\Models\Announcement;
 use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
@@ -128,6 +132,63 @@ test('bootstrap does not report yesterday\'s attendance as today_attendance', fu
 
     $response->assertOk();
     expect($response->json('data.children.0.today_attendance'))->toBeNull();
+});
+
+test('bootstrap includes a published announcement matching the guardian\'s audience', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $announcement = Announcement::factory()->create(['audience_type' => AnnouncementAudienceType::All]);
+    (new PublishAnnouncement)($announcement);
+
+    $response = $this->withToken($token)->getJson('/api/v1/sync/bootstrap');
+
+    $response->assertOk();
+    $announcements = $response->json('data.announcements');
+    expect($announcements)->toHaveCount(1);
+    expect($announcements[0]['uuid'])->toBe($announcement->uuid);
+});
+
+test('bootstrap excludes a published announcement that does not match the guardian\'s audience', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create(['grade' => 'Grade 8']);
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $announcement = Announcement::factory()->create([
+        'audience_type' => AnnouncementAudienceType::Grade,
+        'audience_grade' => 'Grade 7',
+    ]);
+    (new PublishAnnouncement)($announcement);
+
+    $response = $this->withToken($token)->getJson('/api/v1/sync/bootstrap');
+
+    $response->assertOk();
+    expect($response->json('data.announcements'))->toBeEmpty();
+});
+
+test('bootstrap excludes draft, withdrawn, and expired announcements', function () {
+    bindSchool();
+    $user = User::factory()->create();
+    $token = $user->createToken('mobile')->plainTextToken;
+    $guardian = Guardian::factory()->for($user)->create();
+    $student = Student::factory()->create();
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    Announcement::factory()->create(['status' => AnnouncementStatus::Draft, 'audience_type' => AnnouncementAudienceType::All]);
+    Announcement::factory()->create(['status' => AnnouncementStatus::Withdrawn, 'audience_type' => AnnouncementAudienceType::All]);
+    Announcement::factory()->create(['status' => AnnouncementStatus::Expired, 'audience_type' => AnnouncementAudienceType::All]);
+
+    $response = $this->withToken($token)->getJson('/api/v1/sync/bootstrap');
+
+    $response->assertOk();
+    expect($response->json('data.announcements'))->toBeEmpty();
 });
 
 test('an unauthenticated bootstrap request is rejected', function () {

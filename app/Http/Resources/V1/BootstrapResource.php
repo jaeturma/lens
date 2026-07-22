@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Models\Announcement;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
 use App\Models\School;
@@ -15,6 +16,7 @@ use Illuminate\Support\Collection;
  * @property User $user
  * @property Guardian|null $guardian
  * @property Collection<int, GuardianStudentLink> $children
+ * @property Collection<int, Announcement> $announcements
  * @property string $next_cursor
  */
 class BootstrapResource extends JsonResource
@@ -29,6 +31,7 @@ class BootstrapResource extends JsonResource
             'user' => new UserResource($this->user),
             'guardian' => $this->guardian ? new GuardianResource($this->guardian) : null,
             'children' => LinkedStudentResource::collection($this->children),
+            'announcements' => AnnouncementResource::collection($this->announcements),
             'next_cursor' => $this->next_cursor,
         ];
     }

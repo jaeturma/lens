@@ -68,6 +68,15 @@ incremental sync (below), by walking `/sync/changes` from
 paginated history endpoint exists or is needed, since the change feed is
 already paginated.
 
+A top-level `announcements` array (WP-05-04) carries every currently
+`Published` announcement whose audience matches **any** of the guardian's
+active linked students — not nested per child, since one announcement can
+match through several children and isn't itself child-specific data.
+Resolved fresh on every bootstrap call via
+`App\Actions\Announcements\GuardianMatchesAnnouncementAudience` (WP-05-03)
+— `Draft`/`Withdrawn`/`Expired` announcements never appear here regardless
+of audience match.
+
 ```json
 {
   "success": true,
@@ -119,6 +128,16 @@ already paginated.
           "is_late": false,
           "is_absent": false
         }
+      }
+    ],
+    "announcements": [
+      {
+        "uuid": "...",
+        "title": "Foundation Day",
+        "body": "School closed for Foundation Day celebrations.",
+        "status": "published",
+        "published_at": "2026-07-20T01:00:00Z",
+        "expires_at": null
       }
     ],
     "next_cursor": "MA=="
@@ -193,10 +212,20 @@ returns before it is serialized:
   as `student` — but since the summary's own `resource_id` is the
   summary's row, not the student's, this branch checks the `student_id`
   carried in the entry's `payload` instead of `resource_id`.
+- `announcement` entries (WP-05-04): visible only if the guardian
+  currently matches the announcement's audience —
+  `App\Actions\Announcements\GuardianMatchesAnnouncementAudience`
+  (WP-05-03), re-resolved against the **live** `Announcement` fetched via
+  the change's polymorphic `resource` relation, not a stale snapshot from
+  the entry's `payload`: audience and pivot membership (for a `students`
+  audience) can be edited after the change row was already written, and
+  re-resolving keeps that from going stale. A `Draft` never reaches this
+  branch at all — `App\Observers\AnnouncementObserver` never records a
+  sync entry for one (WP-05-01).
 - Any other `resource_type` is denied by default. A future work package
-  that introduces a new synchronized resource (announcements,
-  notifications) must add a branch to this action, or its entries are
-  silently invisible to guardians rather than leaked.
+  that introduces a new synchronized resource (notifications) must add a
+  branch to this action, or its entries are silently invisible to
+  guardians rather than leaked.
 
 This filtering happens **after** pagination, not inside it — `limit`
 still bounds how many raw rows `FetchSyncChanges` reads, so a returned
@@ -320,9 +349,50 @@ and administrator corrections (WP-04-05). Payload:
   `FetchSyncChanges`'s existing cursor/limit pagination rather than adding
   a second, resource-specific pagination mechanism.
 
+### `announcement` (WP-05-04)
+
+Via `App\Observers\AnnouncementObserver` (WP-05-01), which already never
+records a `Draft`. Payload — the exact shape `App\Http\Resources\V1\AnnouncementResource`
+also uses for bootstrap, so the client's local upsert logic can share
+serialization expectations between the two:
+
+```json
+{
+  "uuid": "...",
+  "title": "Foundation Day",
+  "body": "School closed for Foundation Day celebrations.",
+  "status": "published",
+  "published_at": "2026-07-20T01:00:00Z",
+  "expires_at": null
+}
+```
+
+- **Stable ID**: `resource_id` (the announcement's own database id) — an
+  announcement is created once and only ever *updated* thereafter
+  (publish/withdraw/expire/edit all update the existing row; nothing
+  deletes or recreates it), so `resource_id` never changes. The `uuid` in
+  the payload is the client-facing stable identifier, matching every
+  other resource's convention.
+- **Local deletion behavior** (this package's own scope item): withdrawing
+  records `action` `revoked`, and both scheduled and manual expiration
+  record `action` `expired` (WP-05-01) — per this doc's own "Tombstones"
+  section, both are already-established tombstone actions. The client
+  **removes its local copy** on either, the same way it already does for
+  a `guardian_student_link` revocation — not "hidden but kept" (no
+  announcement-history/archive feature exists or was asked for; adding
+  one would be scope beyond "resolve audiences without campaign-level
+  complexity").
+- **Guardian scoping**: see "Guardian-Scoped Authorization" above — scoped
+  by live audience matching, not `resource_id`/payload alone.
+- **Bootstrap**: every currently `Published`, audience-matching
+  announcement is embedded directly in the top-level `announcements` array
+  (see Bootstrap above) — same "no separate history endpoint, replay from
+  `cursor=initial()` instead" reasoning WP-04-06 established for
+  attendance.
+
 ## Not Yet Implemented
 
-No synchronized resource exists yet for announcements or notifications
-(phase 5-6). Their eventual `resource_type`s must be added to
-`App\Actions\Sync\ScopeChangesToGuardian`'s `match` when they land, or
-their entries will be silently invisible to guardians (denied by default).
+No synchronized resource exists yet for notifications (phase 6). Its
+eventual `resource_type` must be added to
+`App\Actions\Sync\ScopeChangesToGuardian`'s `match` when it lands, or its
+entries will be silently invisible to guardians (denied by default).

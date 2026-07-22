@@ -2,12 +2,16 @@
 
 namespace App\Actions\Sync;
 
+use App\Actions\Announcements\GuardianMatchesAnnouncementAudience;
+use App\Models\Announcement;
 use App\Models\Guardian;
 use App\Models\SyncChange;
 use Illuminate\Support\Collection;
 
 class ScopeChangesToGuardian
 {
+    public function __construct(private readonly GuardianMatchesAnnouncementAudience $guardianMatchesAnnouncementAudience) {}
+
     /**
      * Filter a page of sync changes to what one guardian may see.
      *
@@ -29,8 +33,25 @@ class ScopeChangesToGuardian
                 // scoped by the student_id carried in its payload instead,
                 // same "currently active" rule as `student` entries.
                 'attendance_daily_summary' => in_array($change->payload['student_id'] ?? null, $activeStudentIds, true),
+                // Re-resolved against the live Announcement (audience and
+                // pivot membership can change after the change row was
+                // written), not the payload snapshot — a Draft never
+                // reaches here at all (AnnouncementObserver never records
+                // one), so no status check is needed on top of this.
+                'announcement' => $guardian !== null && $this->guardianMatchesAnnouncement($change, $guardian),
                 default => false,
             };
         })->values();
+    }
+
+    private function guardianMatchesAnnouncement(SyncChange $change, Guardian $guardian): bool
+    {
+        $announcement = $change->resource;
+
+        if (! $announcement instanceof Announcement) {
+            return false;
+        }
+
+        return ($this->guardianMatchesAnnouncementAudience)($announcement, $guardian);
     }
 }

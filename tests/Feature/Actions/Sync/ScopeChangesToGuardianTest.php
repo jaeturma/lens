@@ -1,9 +1,13 @@
 <?php
 
+use App\Actions\Announcements\PublishAnnouncement;
 use App\Actions\Sync\RecordSyncChange;
 use App\Actions\Sync\ScopeChangesToGuardian;
+use App\Enums\AnnouncementAudienceType;
+use App\Enums\AnnouncementStatus;
 use App\Enums\GuardianStudentLinkStatus;
 use App\Enums\SyncChangeAction;
+use App\Models\Announcement;
 use App\Models\AttendanceDailySummary;
 use App\Models\Guardian;
 use App\Models\GuardianStudentLink;
@@ -16,7 +20,7 @@ test('school changes are visible to every guardian, including one with no profil
     $school = School::factory()->create();
     $change = (new RecordSyncChange)($school, SyncChangeAction::Updated);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), null);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), null);
 
     expect($scoped)->toHaveCount(1);
 });
@@ -30,7 +34,7 @@ test('student changes are visible only for currently active links', function () 
     $linkedChange = (new RecordSyncChange)($linkedStudent, SyncChangeAction::Updated);
     $unlinkedChange = (new RecordSyncChange)($unlinkedStudent, SyncChangeAction::Updated);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$linkedChange, $unlinkedChange]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$linkedChange, $unlinkedChange]), $guardian);
 
     expect($scoped->pluck('id')->all())->toBe([$linkedChange->id]);
 });
@@ -42,7 +46,7 @@ test('student changes for a revoked link are not visible', function () {
 
     $change = (new RecordSyncChange)($student, SyncChangeAction::Updated);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
 
     expect($scoped)->toBeEmpty();
 });
@@ -54,7 +58,7 @@ test('a guardian_student_link change is visible even after that link is revoked'
 
     $change = (new RecordSyncChange)($link, SyncChangeAction::Revoked);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
 
     expect($scoped)->toHaveCount(1);
 });
@@ -67,7 +71,7 @@ test('a guardian_student_link change for another guardian is not visible', funct
 
     $change = (new RecordSyncChange)($otherLink, SyncChangeAction::Created);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
 
     expect($scoped)->toBeEmpty();
 });
@@ -79,7 +83,7 @@ test('guardian changes are visible only for the guardian\'s own record', functio
     $ownChange = (new RecordSyncChange)($guardian, SyncChangeAction::Updated);
     $otherChange = (new RecordSyncChange)($otherGuardian, SyncChangeAction::Updated);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$ownChange, $otherChange]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$ownChange, $otherChange]), $guardian);
 
     expect($scoped->pluck('id')->all())->toBe([$ownChange->id]);
 });
@@ -93,7 +97,7 @@ test('a guardian with no profile sees no student, guardian, or link changes', fu
     $guardianChange = (new RecordSyncChange)($guardian, SyncChangeAction::Updated);
     $linkChange = (new RecordSyncChange)($link, SyncChangeAction::Updated);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$studentChange, $guardianChange, $linkChange]), null);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$studentChange, $guardianChange, $linkChange]), null);
 
     expect($scoped)->toBeEmpty();
 });
@@ -110,7 +114,7 @@ test('attendance daily summary changes are visible only for currently active lin
     $linkedChange = (new RecordSyncChange)($linkedSummary, SyncChangeAction::Updated, ['student_id' => $linkedStudent->id]);
     $unlinkedChange = (new RecordSyncChange)($unlinkedSummary, SyncChangeAction::Updated, ['student_id' => $unlinkedStudent->id]);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$linkedChange, $unlinkedChange]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$linkedChange, $unlinkedChange]), $guardian);
 
     expect($scoped->pluck('id')->all())->toBe([$linkedChange->id]);
 });
@@ -123,7 +127,71 @@ test('attendance daily summary changes for a revoked link are not visible', func
 
     $change = (new RecordSyncChange)($summary, SyncChangeAction::Corrected, ['student_id' => $student->id]);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), $guardian);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
+
+    expect($scoped)->toBeEmpty();
+});
+
+test('an announcement change is visible to a guardian whose active student matches the audience', function () {
+    $guardian = Guardian::factory()->create();
+    $student = Student::factory()->create(['grade' => 'Grade 7']);
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $announcement = Announcement::factory()->create([
+        'status' => AnnouncementStatus::Draft,
+        'audience_type' => AnnouncementAudienceType::Grade,
+        'audience_grade' => 'Grade 7',
+    ]);
+    (new PublishAnnouncement)($announcement);
+
+    $change = SyncChange::query()->where('resource_type', 'announcement')->where('resource_id', $announcement->id)->firstOrFail();
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
+
+    expect($scoped)->toHaveCount(1);
+});
+
+test('an announcement change is not visible to a guardian whose student does not match the audience', function () {
+    $guardian = Guardian::factory()->create();
+    $student = Student::factory()->create(['grade' => 'Grade 8']);
+    GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $announcement = Announcement::factory()->create([
+        'status' => AnnouncementStatus::Draft,
+        'audience_type' => AnnouncementAudienceType::Grade,
+        'audience_grade' => 'Grade 7',
+    ]);
+    (new PublishAnnouncement)($announcement);
+
+    $change = SyncChange::query()->where('resource_type', 'announcement')->where('resource_id', $announcement->id)->firstOrFail();
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian);
+
+    expect($scoped)->toBeEmpty();
+});
+
+test('an announcement change is not visible once the matching link is revoked', function () {
+    $guardian = Guardian::factory()->create();
+    $student = Student::factory()->create();
+    $link = GuardianStudentLink::factory()->for($guardian)->for($student)->create(['status' => GuardianStudentLinkStatus::Active]);
+
+    $announcement = Announcement::factory()->create(['status' => AnnouncementStatus::Draft, 'audience_type' => AnnouncementAudienceType::All]);
+    (new PublishAnnouncement)($announcement);
+    $change = SyncChange::query()->where('resource_type', 'announcement')->where('resource_id', $announcement->id)->firstOrFail();
+
+    $link->update(['status' => GuardianStudentLinkStatus::Revoked]);
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), $guardian->fresh());
+
+    expect($scoped)->toBeEmpty();
+});
+
+test('an announcement change with no guardian is never visible', function () {
+    $announcement = Announcement::factory()->create(['status' => AnnouncementStatus::Draft, 'audience_type' => AnnouncementAudienceType::All]);
+    (new PublishAnnouncement)($announcement);
+    $change = SyncChange::query()->where('resource_type', 'announcement')->where('resource_id', $announcement->id)->firstOrFail();
+
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), null);
 
     expect($scoped)->toBeEmpty();
 });
@@ -131,7 +199,7 @@ test('attendance daily summary changes for a revoked link are not visible', func
 test('an unrecognized resource type is denied by default', function () {
     $change = SyncChange::factory()->create(['resource_type' => 'something_new']);
 
-    $scoped = (new ScopeChangesToGuardian)(new Collection([$change]), null);
+    $scoped = app(ScopeChangesToGuardian::class)(new Collection([$change]), null);
 
     expect($scoped)->toBeEmpty();
 });
