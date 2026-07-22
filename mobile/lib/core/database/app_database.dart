@@ -42,4 +42,20 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'lens');
   }
+
+  /// Logout (WP-07-07): clears everything that belongs to the guardian who
+  /// was signed in, in one transaction, so a different guardian signing in
+  /// on the same device next never sees a trace of the previous one's
+  /// data. `school_profile` and `app_settings` are deliberately untouched —
+  /// "logout preserves School ID" (WP-07-04's binding, carried over here).
+  Future<void> clearGuardianOwnedData() {
+    return transaction(() async {
+      await delete(guardianProfile).go();
+      await delete(students).go();
+      await delete(attendanceRecords).go();
+      await delete(announcements).go();
+      await delete(notifications).go();
+      await delete(syncState).go();
+    });
+  }
 }

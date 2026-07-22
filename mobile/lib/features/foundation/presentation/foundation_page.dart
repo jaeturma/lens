@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/database/app_database.dart';
+import '../../auth/application/session_controller.dart';
 
-class FoundationPage extends StatelessWidget {
+class FoundationPage extends ConsumerWidget {
   const FoundationPage({required this.school, super.key});
 
   final SchoolProfileData school;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: Text(school.name),
@@ -23,6 +25,14 @@ class FoundationPage extends StatelessWidget {
                 ),
               )
             : null,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Log Out',
+            onPressed: () =>
+                ref.read(sessionControllerProvider.notifier).logout(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(

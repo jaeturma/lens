@@ -39,4 +39,27 @@ class AuthApi {
       throw ApiException.fromDioException(exception);
     }
   }
+
+  /// `GET /auth/me` — confirms the stored token is still accepted by the
+  /// server. Throws [ApiException] (`statusCode` `401`) when it isn't;
+  /// callers use that specifically to tell "expired/revoked" apart from a
+  /// merely unreachable server.
+  Future<void> currentUser() async {
+    try {
+      await _dio.get<Map<String, dynamic>>('/auth/me');
+    } on DioException catch (exception) {
+      throw ApiException.fromDioException(exception);
+    }
+  }
+
+  /// `POST /auth/logout` — revokes the token used to make the request.
+  /// Callers should treat this as best-effort: local logout (clearing the
+  /// stored token and guardian-owned data) proceeds even if this fails.
+  Future<void> logout() async {
+    try {
+      await _dio.post<Map<String, dynamic>>('/auth/logout');
+    } on DioException catch (exception) {
+      throw ApiException.fromDioException(exception);
+    }
+  }
 }
