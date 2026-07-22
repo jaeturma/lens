@@ -12,3 +12,7 @@ Artisan::command('inspire', function () {
 // fixed schedule time, so this runs frequently and the action itself
 // decides whether "now" is past today's cutoff — safe to run repeatedly.
 Schedule::command('attendance:mark-absences')->everyFifteenMinutes();
+
+// expires_at is an admin-set instant, not a fixed daily time, so this
+// polls frequently rather than running once at a fixed clock time.
+Schedule::command('announcements:expire')->everyFifteenMinutes();
