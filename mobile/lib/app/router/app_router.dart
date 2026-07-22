@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/foundation/presentation/foundation_page.dart';
+import '../../features/school_setup/presentation/school_binding_gate.dart';
 
 abstract final class AppRoutes {
   static const foundation = '/';
@@ -13,7 +13,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.foundation,
-        builder: (context, state) => const FoundationPage(),
+        builder: (context, state) => const SchoolBindingGate(),
       ),
     ],
   );
