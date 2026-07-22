@@ -49,6 +49,7 @@ class _FakeBootstrapApi extends BootstrapApi {
     return BootstrapResult(
       school: _school,
       guardian: _resolvedGuardian,
+      children: const [],
       nextCursor: 'cursor-1',
     );
   }
@@ -198,7 +199,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Log in to Example School'), findsNothing);
-      expect(find.text('Foundation Ready'), findsOneWidget);
+      expect(find.text('No linked children yet.'), findsOneWidget);
       expect(tokenStorage.token, '1|abcdef');
 
       final guardian = await database

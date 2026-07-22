@@ -9,7 +9,7 @@ import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
 import '../../auth/application/session_controller.dart';
 import '../../auth/presentation/login_page.dart';
-import '../../foundation/presentation/foundation_page.dart';
+import '../../home/presentation/home_page.dart';
 import 'school_id_setup_page.dart';
 import 'school_status_blocked_page.dart';
 
@@ -20,9 +20,8 @@ final schoolBindingProvider = StreamProvider((ref) {
 /// The app's actual startup gate (`docs/ARCHITECTURE.md` First Launch /
 /// Binding Rules): renders the School ID setup flow until a school is
 /// bound locally — reactively, straight off `school_profile`, per
-/// `docs/ARCHITECTURE.md`'s Runtime Data Flow — then whatever comes after.
-/// Currently that's login/the placeholder foundation page; WP-07-07
-/// refines session restoration on top of this.
+/// `docs/ARCHITECTURE.md`'s Runtime Data Flow — then whatever comes after:
+/// login, or the real home screen (WP-07-09).
 class SchoolBindingGate extends ConsumerWidget {
   const SchoolBindingGate({super.key});
 
@@ -87,10 +86,8 @@ class _BoundSchoolGate extends ConsumerWidget {
 
 /// "Authenticated routing" (WP-07-06): a bound, non-blocked installation
 /// still needs a guardian session before showing app content.
-/// `sessionControllerProvider`'s own initial check is a naive "does a
-/// token exist locally" — validating that token is still accepted by the
-/// server, and returning here after it expires, is WP-07-07's job
-/// (Session Restoration and Logout).
+/// `sessionControllerProvider`'s own check re-validates an existing token
+/// against the server (WP-07-07 — see `SessionController`).
 class _AuthenticationGate extends ConsumerWidget {
   const _AuthenticationGate({required this.school});
 
@@ -102,7 +99,7 @@ class _AuthenticationGate extends ConsumerWidget {
 
     return switch (session) {
       AsyncData(:final value) =>
-        value ? FoundationPage(school: school) : LoginPage(school: school),
+        value ? HomePage(school: school) : LoginPage(school: school),
       // An unreadable session is treated the same as no session — fail
       // safe by asking the guardian to log in again, not by assuming
       // they're still authenticated. Loading (the initial secure-storage

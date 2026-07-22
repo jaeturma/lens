@@ -91,7 +91,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Set Up Your School'), findsNothing);
-      expect(find.text('Foundation Ready'), findsOneWidget);
+      expect(find.text('No linked children yet.'), findsOneWidget);
 
       await disposeAppUnderTest(tester);
     },

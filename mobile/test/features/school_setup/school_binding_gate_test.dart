@@ -56,7 +56,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Mobile Access Disabled'), findsOneWidget);
-    expect(find.text('Foundation Ready'), findsNothing);
+    expect(find.text('No linked children yet.'), findsNothing);
 
     await disposeAppUnderTest(tester);
   });
@@ -80,7 +80,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Update Required'), findsOneWidget);
-    expect(find.text('Foundation Ready'), findsNothing);
+    expect(find.text('No linked children yet.'), findsNothing);
 
     await disposeAppUnderTest(tester);
   });
@@ -110,7 +110,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Down for scheduled maintenance.'), findsOneWidget);
-      expect(find.text('Foundation Ready'), findsOneWidget);
+      expect(find.text('No linked children yet.'), findsOneWidget);
 
       await disposeAppUnderTest(tester);
     },
@@ -135,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Example School'), findsOneWidget);
-    expect(find.text('Foundation Ready'), findsOneWidget);
+    expect(find.text('No linked children yet.'), findsOneWidget);
 
     await disposeAppUnderTest(tester);
   });

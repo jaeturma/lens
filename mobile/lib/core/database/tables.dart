@@ -79,22 +79,30 @@ class Students extends Table {
 
 /// The guardian's own link to a student — the `guardian_student_link` sync
 /// resource (`docs/api/SYNC.md`), kept as its own table rather than
-/// flattened into [Students] (see there for why). [studentServerId] is a
-/// plain indexed column, not a hard foreign key: the payload only ever
-/// gives the student's numeric id, and — since a brand-new student's own
-/// `student`-type and `guardian_student_link`-type entries can arrive in
-/// either order within the same synced page — a hard FK could reject a
-/// link that arrives fractionally before its student row.
+/// flattened into [Students] (see there for why).
+///
+/// Keyed by [studentUuid] (a hard FK — unlike [AttendanceRecords], a link
+/// is only ever written once its student row already exists, both from
+/// bootstrap, which supplies both together, and from incremental sync,
+/// which resolves `student_id` to a local `uuid` before writing, per
+/// `SyncChangeApplier`), not by the link's own `uuid`: bootstrap's
+/// `LinkedStudentResource` gives no link-level uuid or numeric id at all,
+/// only the student's own `uuid` plus the relationship fields flattened
+/// onto it (WP-07-09) — a table that required either as a key couldn't
+/// have a row written for it at bootstrap time. [uuid] and
+/// [studentServerId] are nullable for the same reason, filled in once an
+/// actual `guardian_student_link`-type change-feed entry supplies them.
 class GuardianStudentLinks extends Table {
-  TextColumn get uuid => text()();
-  IntColumn get studentServerId => integer().unique()();
+  TextColumn get studentUuid => text().references(Students, #uuid)();
+  TextColumn get uuid => text().nullable().unique()();
+  IntColumn get studentServerId => integer().nullable().unique()();
   TextColumn get relationshipType => text()();
   BoolColumn get isPrimaryContact => boolean()();
   TextColumn get status => text()();
   BoolColumn get notificationsEnabled => boolean()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {studentUuid};
 }
 
 /// One row per `(student, date)` — matching `attendance_daily_summary`'s own

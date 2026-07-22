@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/database/app_database.dart';
 import 'package:mobile/features/school_bootstrap/data/bootstrap_api.dart';
 import 'package:mobile/features/school_bootstrap/data/bootstrap_repository.dart';
+import 'package:mobile/features/school_bootstrap/data/resolved_child.dart';
 import 'package:mobile/features/school_bootstrap/data/resolved_guardian.dart';
 import 'package:mobile/features/school_setup/data/resolved_school.dart';
 
@@ -30,6 +31,27 @@ const _resolvedGuardian = ResolvedGuardian(
   notifyAnnouncements: true,
 );
 
+const _resolvedChild = ResolvedChild(
+  uuid: 'student-uuid',
+  lrn: '123456789012',
+  studentNumber: 'SN-0001',
+  name: 'Juan Dela Cruz',
+  sex: 'male',
+  grade: 'Grade 7',
+  section: 'Diamond',
+  schoolYear: '2026-2027',
+  status: 'active',
+  photoUrl: null,
+  relationshipType: 'mother',
+  isPrimaryContact: true,
+  todayAttendance: ResolvedTodayAttendance(
+    arrival: null,
+    departure: null,
+    isLate: false,
+    isAbsent: false,
+  ),
+);
+
 class _FakeBootstrapApi extends BootstrapApi {
   _FakeBootstrapApi(this.result) : super(Dio());
 
@@ -51,6 +73,7 @@ void main() {
           const BootstrapResult(
             school: _resolvedSchool,
             guardian: null,
+            children: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -79,6 +102,7 @@ void main() {
           const BootstrapResult(
             school: _resolvedSchool,
             guardian: null,
+            children: [],
             nextCursor: 'cursor-from-bootstrap',
           ),
         ),
@@ -102,6 +126,7 @@ void main() {
           const BootstrapResult(
             school: _resolvedSchool,
             guardian: null,
+            children: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -124,6 +149,7 @@ void main() {
               minimumAppVersion: '0.2.0',
             ),
             guardian: null,
+            children: [],
             nextCursor: 'cursor-2',
           ),
         ),
@@ -148,6 +174,7 @@ void main() {
         const BootstrapResult(
           school: _resolvedSchool,
           guardian: _resolvedGuardian,
+          children: [],
           nextCursor: 'cursor-1',
         ),
       ),
@@ -173,6 +200,7 @@ void main() {
           const BootstrapResult(
             school: _resolvedSchool,
             guardian: null,
+            children: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -183,6 +211,89 @@ void main() {
 
       final rows = await database.select(database.guardianProfile).get();
       expect(rows, isEmpty);
+    },
+  );
+
+  test(
+    'a linked child is cached as a student, an active link, and today\'s attendance',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final repository = BootstrapRepository(
+        _FakeBootstrapApi(
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            children: [_resolvedChild],
+            nextCursor: 'cursor-1',
+          ),
+        ),
+        database,
+      );
+
+      await repository.sync();
+
+      final student = await database.select(database.students).getSingle();
+      expect(student.uuid, 'student-uuid');
+      expect(student.name, 'Juan Dela Cruz');
+      // Bootstrap never exposes a numeric id — only a later student-type
+      // sync entry backfills it (see tables.dart).
+      expect(student.serverId, isNull);
+
+      final link = await database
+          .select(database.guardianStudentLinks)
+          .getSingle();
+      expect(link.studentUuid, 'student-uuid');
+      expect(link.relationshipType, 'mother');
+      expect(link.status, 'active');
+
+      final attendance = await database
+          .select(database.attendanceRecords)
+          .getSingle();
+      expect(attendance.studentUuid, 'student-uuid');
+      expect(attendance.isAbsent, isFalse);
+    },
+  );
+
+  test(
+    'a child with no today_attendance yet writes no attendance row',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      const childWithoutAttendance = ResolvedChild(
+        uuid: 'student-uuid',
+        lrn: '123456789012',
+        studentNumber: 'SN-0001',
+        name: 'Juan Dela Cruz',
+        sex: 'male',
+        grade: 'Grade 7',
+        section: 'Diamond',
+        schoolYear: '2026-2027',
+        status: 'active',
+        photoUrl: null,
+        relationshipType: 'mother',
+        isPrimaryContact: true,
+        todayAttendance: null,
+      );
+
+      final repository = BootstrapRepository(
+        _FakeBootstrapApi(
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            children: [childWithoutAttendance],
+            nextCursor: 'cursor-1',
+          ),
+        ),
+        database,
+      );
+
+      await repository.sync();
+
+      expect(await database.select(database.students).get(), hasLength(1));
+      expect(await database.select(database.attendanceRecords).get(), isEmpty);
     },
   );
 }

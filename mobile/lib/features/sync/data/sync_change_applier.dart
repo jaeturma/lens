@@ -84,9 +84,7 @@ class SyncChangeApplier {
 
     if (entry.action == 'deleted') {
       await _database.attendanceRecordsDao.deleteForStudent(uuid);
-      await _database.guardianStudentLinksDao.deleteByStudentServerId(
-        entry.resourceId,
-      );
+      await _database.guardianStudentLinksDao.deleteByStudentUuid(uuid);
       await _database.studentsDao.deleteByUuid(uuid);
       return;
     }
@@ -111,34 +109,37 @@ class SyncChangeApplier {
   /// A `revoked` (or hard `deleted`) link "is exactly what tells the
   /// client to remove a student locally" (`docs/api/SYNC.md`) — not just
   /// the link record, the student and their attendance history too.
+  ///
+  /// Keyed by `studentUuid` throughout (`tables.dart`), resolved from the
+  /// payload's numeric `student_id` the same way `attendance_daily_summary`
+  /// is — if the student isn't known locally yet, this entry is skipped
+  /// for the same reason (see this class's doc comment on ordering).
   Future<void> _applyGuardianStudentLink(SyncChangeEntry entry) async {
     final uuid = entry.payload['uuid'] as String?;
     final studentServerId = entry.payload['student_id'] as int?;
-
-    if (entry.action == 'revoked' || entry.action == 'deleted') {
-      if (studentServerId != null) {
-        final studentUuid = await _database.studentsDao.findUuidByServerId(
-          studentServerId,
-        );
-        if (studentUuid != null) {
-          await _database.attendanceRecordsDao.deleteForStudent(studentUuid);
-          await _database.studentsDao.deleteByUuid(studentUuid);
-        }
-      }
-      if (uuid != null) {
-        await _database.guardianStudentLinksDao.deleteByUuid(uuid);
-      }
+    if (studentServerId == null) {
       return;
     }
 
-    if (uuid == null || studentServerId == null) {
+    final studentUuid = await _database.studentsDao.findUuidByServerId(
+      studentServerId,
+    );
+    if (studentUuid == null) {
+      return;
+    }
+
+    if (entry.action == 'revoked' || entry.action == 'deleted') {
+      await _database.attendanceRecordsDao.deleteForStudent(studentUuid);
+      await _database.studentsDao.deleteByUuid(studentUuid);
+      await _database.guardianStudentLinksDao.deleteByStudentUuid(studentUuid);
       return;
     }
 
     await _database.guardianStudentLinksDao.upsert(
       GuardianStudentLinksCompanion.insert(
-        uuid: uuid,
-        studentServerId: studentServerId,
+        studentUuid: studentUuid,
+        uuid: Value(uuid),
+        studentServerId: Value(studentServerId),
         relationshipType: entry.payload['relationship_type'] as String,
         isPrimaryContact: entry.payload['is_primary_contact'] as bool,
         status: entry.payload['status'] as String,

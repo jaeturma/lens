@@ -105,16 +105,10 @@ class GuardianStudentLinksDao extends DatabaseAccessor<AppDatabase>
     return into(guardianStudentLinks).insertOnConflictUpdate(entry);
   }
 
-  Future<void> deleteByUuid(String uuid) {
+  Future<void> deleteByStudentUuid(String studentUuid) {
     return (delete(
       guardianStudentLinks,
-    )..where((row) => row.uuid.equals(uuid))).go();
-  }
-
-  Future<void> deleteByStudentServerId(int studentServerId) {
-    return (delete(
-      guardianStudentLinks,
-    )..where((row) => row.studentServerId.equals(studentServerId))).go();
+    )..where((row) => row.studentUuid.equals(studentUuid))).go();
   }
 }
 
@@ -151,6 +145,56 @@ class AttendanceRecordsDao extends DatabaseAccessor<AppDatabase>
     return (delete(
       attendanceRecords,
     )..where((row) => row.studentUuid.equals(studentUuid))).go();
+  }
+}
+
+class LinkedChild {
+  const LinkedChild({
+    required this.student,
+    required this.link,
+    this.todayAttendance,
+  });
+
+  final Student student;
+  final GuardianStudentLink link;
+  final AttendanceRecord? todayAttendance;
+}
+
+/// Cross-table repository boundary for the parent home screen (WP-07-09):
+/// a guardian's actively-linked children, each joined with today's
+/// attendance if any has landed yet. Spans three tables because that's
+/// what the home screen's own "linked child" concept does — no single
+/// table/DAO above represents it on its own.
+@DriftAccessor(tables: [Students, GuardianStudentLinks, AttendanceRecords])
+class LinkedChildrenDao extends DatabaseAccessor<AppDatabase>
+    with _$LinkedChildrenDaoMixin {
+  LinkedChildrenDao(super.db);
+
+  Stream<List<LinkedChild>> watchActive(DateTime today) {
+    final query =
+        select(students).join([
+            innerJoin(
+              guardianStudentLinks,
+              guardianStudentLinks.studentUuid.equalsExp(students.uuid),
+            ),
+            leftOuterJoin(
+              attendanceRecords,
+              attendanceRecords.studentUuid.equalsExp(students.uuid) &
+                  attendanceRecords.date.equals(today),
+            ),
+          ])
+          ..where(guardianStudentLinks.status.equals('active'))
+          ..orderBy([OrderingTerm.asc(students.name)]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return LinkedChild(
+          student: row.readTable(students),
+          link: row.readTable(guardianStudentLinks),
+          todayAttendance: row.readTableOrNull(attendanceRecords),
+        );
+      }).toList();
+    });
   }
 }
 
@@ -196,6 +240,14 @@ class SyncStateDao extends DatabaseAccessor<AppDatabase>
   SyncStateDao(super.db);
 
   static const _rowId = 0;
+
+  /// For "last sync"/staleness display (WP-07-09) — the single row,
+  /// reactively, rather than a one-time read.
+  Stream<SyncStateData?> watch() {
+    return (select(
+      syncState,
+    )..where((row) => row.id.equals(_rowId))).watchSingleOrNull();
+  }
 
   Future<String?> readCursor() async {
     final row = await (select(

@@ -137,8 +137,9 @@ void main() {
         );
         await database.guardianStudentLinksDao.upsert(
           GuardianStudentLinksCompanion.insert(
-            uuid: 'link-uuid',
-            studentServerId: 42,
+            studentUuid: 'student-uuid',
+            uuid: const Value('link-uuid'),
+            studentServerId: const Value(42),
             relationshipType: 'mother',
             isPrimaryContact: true,
             status: 'active',
@@ -169,8 +170,51 @@ void main() {
   });
 
   group('guardian_student_link', () {
+    test('created/updated upserts the link keyed by the student\'s uuid, '
+        'resolved from the student_id in the payload', () async {
+      await database.studentsDao.upsert(
+        StudentsCompanion.insert(
+          uuid: 'student-uuid',
+          serverId: const Value(42),
+          lrn: '123456789012',
+          studentNumber: 'SN-0001',
+          name: 'Juan Dela Cruz',
+          sex: 'male',
+          grade: 'Grade 7',
+          section: 'Diamond',
+          schoolYear: '2026-2027',
+          status: 'active',
+        ),
+      );
+
+      await applier.applyAll([
+        _entry(
+          resourceType: 'guardian_student_link',
+          resourceId: 5,
+          action: 'created',
+          payload: {
+            'uuid': 'link-uuid',
+            'student_id': 42,
+            'guardian_id': 7,
+            'relationship_type': 'mother',
+            'is_primary_contact': true,
+            'status': 'active',
+            'notifications_enabled': true,
+          },
+        ),
+      ]);
+
+      final row = await database
+          .select(database.guardianStudentLinks)
+          .getSingle();
+      expect(row.studentUuid, 'student-uuid');
+      expect(row.uuid, 'link-uuid');
+      expect(row.studentServerId, 42);
+      expect(row.relationshipType, 'mother');
+    });
+
     test(
-      'created/updated upserts the link keyed by the student\'s server id',
+      'is skipped (not an error) when the student is not yet known locally',
       () async {
         await applier.applyAll([
           _entry(
@@ -179,7 +223,7 @@ void main() {
             action: 'created',
             payload: {
               'uuid': 'link-uuid',
-              'student_id': 42,
+              'student_id': 999,
               'guardian_id': 7,
               'relationship_type': 'mother',
               'is_primary_contact': true,
@@ -189,12 +233,10 @@ void main() {
           ),
         ]);
 
-        final row = await database
-            .select(database.guardianStudentLinks)
-            .getSingle();
-        expect(row.uuid, 'link-uuid');
-        expect(row.studentServerId, 42);
-        expect(row.relationshipType, 'mother');
+        expect(
+          await database.select(database.guardianStudentLinks).get(),
+          isEmpty,
+        );
       },
     );
 
@@ -226,8 +268,9 @@ void main() {
         );
         await database.guardianStudentLinksDao.upsert(
           GuardianStudentLinksCompanion.insert(
-            uuid: 'link-uuid',
-            studentServerId: 42,
+            studentUuid: 'student-uuid',
+            uuid: const Value('link-uuid'),
+            studentServerId: const Value(42),
             relationshipType: 'mother',
             isPrimaryContact: true,
             status: 'active',

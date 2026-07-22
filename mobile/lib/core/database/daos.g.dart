@@ -55,6 +55,7 @@ class StudentsDaoManager {
 }
 
 mixin _$GuardianStudentLinksDaoMixin on DatabaseAccessor<AppDatabase> {
+  $StudentsTable get students => attachedDatabase.students;
   $GuardianStudentLinksTable get guardianStudentLinks =>
       attachedDatabase.guardianStudentLinks;
   GuardianStudentLinksDaoManager get managers =>
@@ -64,6 +65,8 @@ mixin _$GuardianStudentLinksDaoMixin on DatabaseAccessor<AppDatabase> {
 class GuardianStudentLinksDaoManager {
   final _$GuardianStudentLinksDaoMixin _db;
   GuardianStudentLinksDaoManager(this._db);
+  $$StudentsTableTableManager get students =>
+      $$StudentsTableTableManager(_db.attachedDatabase, _db.students);
   $$GuardianStudentLinksTableTableManager get guardianStudentLinks =>
       $$GuardianStudentLinksTableTableManager(
         _db.attachedDatabase,
@@ -83,6 +86,32 @@ class AttendanceRecordsDaoManager {
   AttendanceRecordsDaoManager(this._db);
   $$StudentsTableTableManager get students =>
       $$StudentsTableTableManager(_db.attachedDatabase, _db.students);
+  $$AttendanceRecordsTableTableManager get attendanceRecords =>
+      $$AttendanceRecordsTableTableManager(
+        _db.attachedDatabase,
+        _db.attendanceRecords,
+      );
+}
+
+mixin _$LinkedChildrenDaoMixin on DatabaseAccessor<AppDatabase> {
+  $StudentsTable get students => attachedDatabase.students;
+  $GuardianStudentLinksTable get guardianStudentLinks =>
+      attachedDatabase.guardianStudentLinks;
+  $AttendanceRecordsTable get attendanceRecords =>
+      attachedDatabase.attendanceRecords;
+  LinkedChildrenDaoManager get managers => LinkedChildrenDaoManager(this);
+}
+
+class LinkedChildrenDaoManager {
+  final _$LinkedChildrenDaoMixin _db;
+  LinkedChildrenDaoManager(this._db);
+  $$StudentsTableTableManager get students =>
+      $$StudentsTableTableManager(_db.attachedDatabase, _db.students);
+  $$GuardianStudentLinksTableTableManager get guardianStudentLinks =>
+      $$GuardianStudentLinksTableTableManager(
+        _db.attachedDatabase,
+        _db.guardianStudentLinks,
+      );
   $$AttendanceRecordsTableTableManager get attendanceRecords =>
       $$AttendanceRecordsTableTableManager(
         _db.attachedDatabase,

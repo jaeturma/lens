@@ -31,11 +31,11 @@ class FakeUnauthenticatedSession extends SessionController {
   Future<bool> build() async => false;
 }
 
-/// `FoundationPage` fires a sync on every build (WP-07-08's "support
-/// startup"), which would otherwise reach the real `dioProvider` and hang
-/// for a full connect-timeout in any test that renders it. Override
-/// `syncApiProvider` with this in such tests unless the test is
-/// specifically exercising sync behavior itself.
+/// `HomePage` fires a sync on every build (WP-07-08's "support startup"),
+/// which would otherwise reach the real `dioProvider` and hang for a full
+/// connect-timeout in any test that renders it. Override `syncApiProvider`
+/// with this in such tests unless the test is specifically exercising
+/// sync behavior itself.
 class NoOpSyncApi extends SyncApi {
   NoOpSyncApi() : super(Dio());
 

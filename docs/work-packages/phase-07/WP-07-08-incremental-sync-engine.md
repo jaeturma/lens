@@ -66,6 +66,21 @@ Update the relevant core or API document.
 
 ## Implementation Notes
 
+**Corrected by WP-07-09**: `GuardianStudentLinks` as originally built here was
+keyed by the link's own `uuid`, with `studentServerId` as a required
+`NOT NULL` column. Bootstrap's `children[]` (the *only* place a guardian's
+linked students first enter local storage — WP-07-09) gives no link-level
+uuid and no numeric student id at all, only the student's own `uuid` plus
+the relationship fields flattened onto it — a row from bootstrap couldn't
+have been written against that schema. Re-keyed by `studentUuid` (both
+`uuid` and `studentServerId` now nullable, backfilled once an actual
+`guardian_student_link`-type sync entry supplies them); `SyncChangeApplier`
+now resolves `studentUuid` from the payload's numeric `student_id` for the
+create/update path too, not just revoke. See `tables.dart` and
+`WP-07-09-offline-home-and-linked-children.md` for the current shape — this
+section is left as a historical record of what shipped in this WP's own
+session, not the shape actually in the codebase today.
+
 Researched the actual current Laravel code (not just `docs/api/SYNC.md`,
 which is stale in two respects — see below) before writing anything, since
 getting a payload shape or action mapping wrong here silently corrupts

@@ -63,6 +63,7 @@ class _FakeBootstrapApi extends BootstrapApi {
     return const BootstrapResult(
       school: _resolvedSchool,
       guardian: _resolvedGuardian,
+      children: [],
       nextCursor: 'cursor-1',
     );
   }

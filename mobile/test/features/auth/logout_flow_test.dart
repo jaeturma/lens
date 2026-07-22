@@ -92,7 +92,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Foundation Ready'), findsOneWidget);
+      expect(find.text('No linked children yet.'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Log Out'));
       await tester.pumpAndSettle();

@@ -2022,14 +2022,29 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $GuardianStudentLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _studentUuidMeta = const VerificationMeta(
+    'studentUuid',
+  );
+  @override
+  late final GeneratedColumn<String> studentUuid = GeneratedColumn<String>(
+    'student_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES students (uuid)',
+    ),
+  );
   static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
   @override
   late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
     'uuid',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _studentServerIdMeta = const VerificationMeta(
     'studentServerId',
@@ -2038,9 +2053,9 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
   late final GeneratedColumn<int> studentServerId = GeneratedColumn<int>(
     'student_server_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _relationshipTypeMeta = const VerificationMeta(
@@ -2092,6 +2107,7 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
   );
   @override
   List<GeneratedColumn> get $columns => [
+    studentUuid,
     uuid,
     studentServerId,
     relationshipType,
@@ -2111,13 +2127,22 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('student_uuid')) {
+      context.handle(
+        _studentUuidMeta,
+        studentUuid.isAcceptableOrUnknown(
+          data['student_uuid']!,
+          _studentUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_studentUuidMeta);
+    }
     if (data.containsKey('uuid')) {
       context.handle(
         _uuidMeta,
         uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
       );
-    } else if (isInserting) {
-      context.missing(_uuidMeta);
     }
     if (data.containsKey('student_server_id')) {
       context.handle(
@@ -2127,8 +2152,6 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
           _studentServerIdMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_studentServerIdMeta);
     }
     if (data.containsKey('relationship_type')) {
       context.handle(
@@ -2175,19 +2198,23 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {uuid};
+  Set<GeneratedColumn> get $primaryKey => {studentUuid};
   @override
   GuardianStudentLink map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return GuardianStudentLink(
+      studentUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}student_uuid'],
+      )!,
       uuid: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}uuid'],
-      )!,
+      ),
       studentServerId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}student_server_id'],
-      )!,
+      ),
       relationshipType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}relationship_type'],
@@ -2215,15 +2242,17 @@ class $GuardianStudentLinksTable extends GuardianStudentLinks
 
 class GuardianStudentLink extends DataClass
     implements Insertable<GuardianStudentLink> {
-  final String uuid;
-  final int studentServerId;
+  final String studentUuid;
+  final String? uuid;
+  final int? studentServerId;
   final String relationshipType;
   final bool isPrimaryContact;
   final String status;
   final bool notificationsEnabled;
   const GuardianStudentLink({
-    required this.uuid,
-    required this.studentServerId,
+    required this.studentUuid,
+    this.uuid,
+    this.studentServerId,
     required this.relationshipType,
     required this.isPrimaryContact,
     required this.status,
@@ -2232,8 +2261,13 @@ class GuardianStudentLink extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['uuid'] = Variable<String>(uuid);
-    map['student_server_id'] = Variable<int>(studentServerId);
+    map['student_uuid'] = Variable<String>(studentUuid);
+    if (!nullToAbsent || uuid != null) {
+      map['uuid'] = Variable<String>(uuid);
+    }
+    if (!nullToAbsent || studentServerId != null) {
+      map['student_server_id'] = Variable<int>(studentServerId);
+    }
     map['relationship_type'] = Variable<String>(relationshipType);
     map['is_primary_contact'] = Variable<bool>(isPrimaryContact);
     map['status'] = Variable<String>(status);
@@ -2243,8 +2277,11 @@ class GuardianStudentLink extends DataClass
 
   GuardianStudentLinksCompanion toCompanion(bool nullToAbsent) {
     return GuardianStudentLinksCompanion(
-      uuid: Value(uuid),
-      studentServerId: Value(studentServerId),
+      studentUuid: Value(studentUuid),
+      uuid: uuid == null && nullToAbsent ? const Value.absent() : Value(uuid),
+      studentServerId: studentServerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(studentServerId),
       relationshipType: Value(relationshipType),
       isPrimaryContact: Value(isPrimaryContact),
       status: Value(status),
@@ -2258,8 +2295,9 @@ class GuardianStudentLink extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return GuardianStudentLink(
-      uuid: serializer.fromJson<String>(json['uuid']),
-      studentServerId: serializer.fromJson<int>(json['studentServerId']),
+      studentUuid: serializer.fromJson<String>(json['studentUuid']),
+      uuid: serializer.fromJson<String?>(json['uuid']),
+      studentServerId: serializer.fromJson<int?>(json['studentServerId']),
       relationshipType: serializer.fromJson<String>(json['relationshipType']),
       isPrimaryContact: serializer.fromJson<bool>(json['isPrimaryContact']),
       status: serializer.fromJson<String>(json['status']),
@@ -2272,8 +2310,9 @@ class GuardianStudentLink extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'uuid': serializer.toJson<String>(uuid),
-      'studentServerId': serializer.toJson<int>(studentServerId),
+      'studentUuid': serializer.toJson<String>(studentUuid),
+      'uuid': serializer.toJson<String?>(uuid),
+      'studentServerId': serializer.toJson<int?>(studentServerId),
       'relationshipType': serializer.toJson<String>(relationshipType),
       'isPrimaryContact': serializer.toJson<bool>(isPrimaryContact),
       'status': serializer.toJson<String>(status),
@@ -2282,15 +2321,19 @@ class GuardianStudentLink extends DataClass
   }
 
   GuardianStudentLink copyWith({
-    String? uuid,
-    int? studentServerId,
+    String? studentUuid,
+    Value<String?> uuid = const Value.absent(),
+    Value<int?> studentServerId = const Value.absent(),
     String? relationshipType,
     bool? isPrimaryContact,
     String? status,
     bool? notificationsEnabled,
   }) => GuardianStudentLink(
-    uuid: uuid ?? this.uuid,
-    studentServerId: studentServerId ?? this.studentServerId,
+    studentUuid: studentUuid ?? this.studentUuid,
+    uuid: uuid.present ? uuid.value : this.uuid,
+    studentServerId: studentServerId.present
+        ? studentServerId.value
+        : this.studentServerId,
     relationshipType: relationshipType ?? this.relationshipType,
     isPrimaryContact: isPrimaryContact ?? this.isPrimaryContact,
     status: status ?? this.status,
@@ -2298,6 +2341,9 @@ class GuardianStudentLink extends DataClass
   );
   GuardianStudentLink copyWithCompanion(GuardianStudentLinksCompanion data) {
     return GuardianStudentLink(
+      studentUuid: data.studentUuid.present
+          ? data.studentUuid.value
+          : this.studentUuid,
       uuid: data.uuid.present ? data.uuid.value : this.uuid,
       studentServerId: data.studentServerId.present
           ? data.studentServerId.value
@@ -2318,6 +2364,7 @@ class GuardianStudentLink extends DataClass
   @override
   String toString() {
     return (StringBuffer('GuardianStudentLink(')
+          ..write('studentUuid: $studentUuid, ')
           ..write('uuid: $uuid, ')
           ..write('studentServerId: $studentServerId, ')
           ..write('relationshipType: $relationshipType, ')
@@ -2330,6 +2377,7 @@ class GuardianStudentLink extends DataClass
 
   @override
   int get hashCode => Object.hash(
+    studentUuid,
     uuid,
     studentServerId,
     relationshipType,
@@ -2341,6 +2389,7 @@ class GuardianStudentLink extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is GuardianStudentLink &&
+          other.studentUuid == this.studentUuid &&
           other.uuid == this.uuid &&
           other.studentServerId == this.studentServerId &&
           other.relationshipType == this.relationshipType &&
@@ -2351,14 +2400,16 @@ class GuardianStudentLink extends DataClass
 
 class GuardianStudentLinksCompanion
     extends UpdateCompanion<GuardianStudentLink> {
-  final Value<String> uuid;
-  final Value<int> studentServerId;
+  final Value<String> studentUuid;
+  final Value<String?> uuid;
+  final Value<int?> studentServerId;
   final Value<String> relationshipType;
   final Value<bool> isPrimaryContact;
   final Value<String> status;
   final Value<bool> notificationsEnabled;
   final Value<int> rowid;
   const GuardianStudentLinksCompanion({
+    this.studentUuid = const Value.absent(),
     this.uuid = const Value.absent(),
     this.studentServerId = const Value.absent(),
     this.relationshipType = const Value.absent(),
@@ -2368,20 +2419,21 @@ class GuardianStudentLinksCompanion
     this.rowid = const Value.absent(),
   });
   GuardianStudentLinksCompanion.insert({
-    required String uuid,
-    required int studentServerId,
+    required String studentUuid,
+    this.uuid = const Value.absent(),
+    this.studentServerId = const Value.absent(),
     required String relationshipType,
     required bool isPrimaryContact,
     required String status,
     required bool notificationsEnabled,
     this.rowid = const Value.absent(),
-  }) : uuid = Value(uuid),
-       studentServerId = Value(studentServerId),
+  }) : studentUuid = Value(studentUuid),
        relationshipType = Value(relationshipType),
        isPrimaryContact = Value(isPrimaryContact),
        status = Value(status),
        notificationsEnabled = Value(notificationsEnabled);
   static Insertable<GuardianStudentLink> custom({
+    Expression<String>? studentUuid,
     Expression<String>? uuid,
     Expression<int>? studentServerId,
     Expression<String>? relationshipType,
@@ -2391,6 +2443,7 @@ class GuardianStudentLinksCompanion
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (studentUuid != null) 'student_uuid': studentUuid,
       if (uuid != null) 'uuid': uuid,
       if (studentServerId != null) 'student_server_id': studentServerId,
       if (relationshipType != null) 'relationship_type': relationshipType,
@@ -2403,8 +2456,9 @@ class GuardianStudentLinksCompanion
   }
 
   GuardianStudentLinksCompanion copyWith({
-    Value<String>? uuid,
-    Value<int>? studentServerId,
+    Value<String>? studentUuid,
+    Value<String?>? uuid,
+    Value<int?>? studentServerId,
     Value<String>? relationshipType,
     Value<bool>? isPrimaryContact,
     Value<String>? status,
@@ -2412,6 +2466,7 @@ class GuardianStudentLinksCompanion
     Value<int>? rowid,
   }) {
     return GuardianStudentLinksCompanion(
+      studentUuid: studentUuid ?? this.studentUuid,
       uuid: uuid ?? this.uuid,
       studentServerId: studentServerId ?? this.studentServerId,
       relationshipType: relationshipType ?? this.relationshipType,
@@ -2425,6 +2480,9 @@ class GuardianStudentLinksCompanion
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (studentUuid.present) {
+      map['student_uuid'] = Variable<String>(studentUuid.value);
+    }
     if (uuid.present) {
       map['uuid'] = Variable<String>(uuid.value);
     }
@@ -2452,6 +2510,7 @@ class GuardianStudentLinksCompanion
   @override
   String toString() {
     return (StringBuffer('GuardianStudentLinksCompanion(')
+          ..write('studentUuid: $studentUuid, ')
           ..write('uuid: $uuid, ')
           ..write('studentServerId: $studentServerId, ')
           ..write('relationshipType: $relationshipType, ')
@@ -4139,6 +4198,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final StudentsDao studentsDao = StudentsDao(this as AppDatabase);
   late final GuardianStudentLinksDao guardianStudentLinksDao =
       GuardianStudentLinksDao(this as AppDatabase);
+  late final LinkedChildrenDao linkedChildrenDao = LinkedChildrenDao(
+    this as AppDatabase,
+  );
   late final AttendanceRecordsDao attendanceRecordsDao = AttendanceRecordsDao(
     this as AppDatabase,
   );
@@ -4906,6 +4968,34 @@ final class $$StudentsTableReferences
     extends BaseReferences<_$AppDatabase, $StudentsTable, Student> {
   $$StudentsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
+  static MultiTypedResultKey<
+    $GuardianStudentLinksTable,
+    List<GuardianStudentLink>
+  >
+  _guardianStudentLinksRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.guardianStudentLinks,
+        aliasName: 'students__uuid__guardian_student_links__student_uuid',
+      );
+
+  $$GuardianStudentLinksTableProcessedTableManager
+  get guardianStudentLinksRefs {
+    final manager =
+        $$GuardianStudentLinksTableTableManager(
+          $_db,
+          $_db.guardianStudentLinks,
+        ).filter(
+          (f) => f.studentUuid.uuid.sqlEquals($_itemColumn<String>('uuid')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _guardianStudentLinksRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$AttendanceRecordsTable, List<AttendanceRecord>>
   _attendanceRecordsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
@@ -4994,6 +5084,31 @@ class $$StudentsTableFilterComposer
     column: $table.photoUrl,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> guardianStudentLinksRefs(
+    Expression<bool> Function($$GuardianStudentLinksTableFilterComposer f) f,
+  ) {
+    final $$GuardianStudentLinksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.uuid,
+      referencedTable: $db.guardianStudentLinks,
+      getReferencedColumn: (t) => t.studentUuid,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GuardianStudentLinksTableFilterComposer(
+            $db: $db,
+            $table: $db.guardianStudentLinks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 
   Expression<bool> attendanceRecordsRefs(
     Expression<bool> Function($$AttendanceRecordsTableFilterComposer f) f,
@@ -5132,6 +5247,32 @@ class $$StudentsTableAnnotationComposer
   GeneratedColumn<String> get photoUrl =>
       $composableBuilder(column: $table.photoUrl, builder: (column) => column);
 
+  Expression<T> guardianStudentLinksRefs<T extends Object>(
+    Expression<T> Function($$GuardianStudentLinksTableAnnotationComposer a) f,
+  ) {
+    final $$GuardianStudentLinksTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.uuid,
+          referencedTable: $db.guardianStudentLinks,
+          getReferencedColumn: (t) => t.studentUuid,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$GuardianStudentLinksTableAnnotationComposer(
+                $db: $db,
+                $table: $db.guardianStudentLinks,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
   Expression<T> attendanceRecordsRefs<T extends Object>(
     Expression<T> Function($$AttendanceRecordsTableAnnotationComposer a) f,
   ) {
@@ -5172,7 +5313,10 @@ class $$StudentsTableTableManager
           $$StudentsTableUpdateCompanionBuilder,
           (Student, $$StudentsTableReferences),
           Student,
-          PrefetchHooks Function({bool attendanceRecordsRefs})
+          PrefetchHooks Function({
+            bool guardianStudentLinksRefs,
+            bool attendanceRecordsRefs,
+          })
         > {
   $$StudentsTableTableManager(_$AppDatabase db, $StudentsTable table)
     : super(
@@ -5249,39 +5393,66 @@ class $$StudentsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({attendanceRecordsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (attendanceRecordsRefs) db.attendanceRecords,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (attendanceRecordsRefs)
-                    await $_getPrefetchedData<
-                      Student,
-                      $StudentsTable,
-                      AttendanceRecord
-                    >(
-                      currentTable: table,
-                      referencedTable: $$StudentsTableReferences
-                          ._attendanceRecordsRefsTable(db),
-                      managerFromTypedResult: (p0) => $$StudentsTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).attendanceRecordsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.studentUuid == item.uuid,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({
+                guardianStudentLinksRefs = false,
+                attendanceRecordsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (guardianStudentLinksRefs) db.guardianStudentLinks,
+                    if (attendanceRecordsRefs) db.attendanceRecords,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (guardianStudentLinksRefs)
+                        await $_getPrefetchedData<
+                          Student,
+                          $StudentsTable,
+                          GuardianStudentLink
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudentsTableReferences
+                              ._guardianStudentLinksRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudentsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).guardianStudentLinksRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.studentUuid == item.uuid,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (attendanceRecordsRefs)
+                        await $_getPrefetchedData<
+                          Student,
+                          $StudentsTable,
+                          AttendanceRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudentsTableReferences
+                              ._attendanceRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudentsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).attendanceRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.studentUuid == item.uuid,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -5298,12 +5469,16 @@ typedef $$StudentsTableProcessedTableManager =
       $$StudentsTableUpdateCompanionBuilder,
       (Student, $$StudentsTableReferences),
       Student,
-      PrefetchHooks Function({bool attendanceRecordsRefs})
+      PrefetchHooks Function({
+        bool guardianStudentLinksRefs,
+        bool attendanceRecordsRefs,
+      })
     >;
 typedef $$GuardianStudentLinksTableCreateCompanionBuilder =
     GuardianStudentLinksCompanion Function({
-      required String uuid,
-      required int studentServerId,
+      required String studentUuid,
+      Value<String?> uuid,
+      Value<int?> studentServerId,
       required String relationshipType,
       required bool isPrimaryContact,
       required String status,
@@ -5312,14 +5487,46 @@ typedef $$GuardianStudentLinksTableCreateCompanionBuilder =
     });
 typedef $$GuardianStudentLinksTableUpdateCompanionBuilder =
     GuardianStudentLinksCompanion Function({
-      Value<String> uuid,
-      Value<int> studentServerId,
+      Value<String> studentUuid,
+      Value<String?> uuid,
+      Value<int?> studentServerId,
       Value<String> relationshipType,
       Value<bool> isPrimaryContact,
       Value<String> status,
       Value<bool> notificationsEnabled,
       Value<int> rowid,
     });
+
+final class $$GuardianStudentLinksTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $GuardianStudentLinksTable,
+          GuardianStudentLink
+        > {
+  $$GuardianStudentLinksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StudentsTable _studentUuidTable(_$AppDatabase db) => db.students
+      .createAlias('guardian_student_links__student_uuid__students__uuid');
+
+  $$StudentsTableProcessedTableManager get studentUuid {
+    final $_column = $_itemColumn<String>('student_uuid')!;
+
+    final manager = $$StudentsTableTableManager(
+      $_db,
+      $_db.students,
+    ).filter((f) => f.uuid.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studentUuidTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$GuardianStudentLinksTableFilterComposer
     extends Composer<_$AppDatabase, $GuardianStudentLinksTable> {
@@ -5359,6 +5566,29 @@ class $$GuardianStudentLinksTableFilterComposer
     column: $table.notificationsEnabled,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$StudentsTableFilterComposer get studentUuid {
+    final $$StudentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentUuid,
+      referencedTable: $db.students,
+      getReferencedColumn: (t) => t.uuid,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableFilterComposer(
+            $db: $db,
+            $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$GuardianStudentLinksTableOrderingComposer
@@ -5399,6 +5629,29 @@ class $$GuardianStudentLinksTableOrderingComposer
     column: $table.notificationsEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$StudentsTableOrderingComposer get studentUuid {
+    final $$StudentsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentUuid,
+      referencedTable: $db.students,
+      getReferencedColumn: (t) => t.uuid,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableOrderingComposer(
+            $db: $db,
+            $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$GuardianStudentLinksTableAnnotationComposer
@@ -5435,6 +5688,29 @@ class $$GuardianStudentLinksTableAnnotationComposer
     column: $table.notificationsEnabled,
     builder: (column) => column,
   );
+
+  $$StudentsTableAnnotationComposer get studentUuid {
+    final $$StudentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentUuid,
+      referencedTable: $db.students,
+      getReferencedColumn: (t) => t.uuid,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$GuardianStudentLinksTableTableManager
@@ -5448,16 +5724,9 @@ class $$GuardianStudentLinksTableTableManager
           $$GuardianStudentLinksTableAnnotationComposer,
           $$GuardianStudentLinksTableCreateCompanionBuilder,
           $$GuardianStudentLinksTableUpdateCompanionBuilder,
-          (
-            GuardianStudentLink,
-            BaseReferences<
-              _$AppDatabase,
-              $GuardianStudentLinksTable,
-              GuardianStudentLink
-            >,
-          ),
+          (GuardianStudentLink, $$GuardianStudentLinksTableReferences),
           GuardianStudentLink,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool studentUuid})
         > {
   $$GuardianStudentLinksTableTableManager(
     _$AppDatabase db,
@@ -5480,14 +5749,16 @@ class $$GuardianStudentLinksTableTableManager
               ),
           updateCompanionCallback:
               ({
-                Value<String> uuid = const Value.absent(),
-                Value<int> studentServerId = const Value.absent(),
+                Value<String> studentUuid = const Value.absent(),
+                Value<String?> uuid = const Value.absent(),
+                Value<int?> studentServerId = const Value.absent(),
                 Value<String> relationshipType = const Value.absent(),
                 Value<bool> isPrimaryContact = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<bool> notificationsEnabled = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GuardianStudentLinksCompanion(
+                studentUuid: studentUuid,
                 uuid: uuid,
                 studentServerId: studentServerId,
                 relationshipType: relationshipType,
@@ -5498,14 +5769,16 @@ class $$GuardianStudentLinksTableTableManager
               ),
           createCompanionCallback:
               ({
-                required String uuid,
-                required int studentServerId,
+                required String studentUuid,
+                Value<String?> uuid = const Value.absent(),
+                Value<int?> studentServerId = const Value.absent(),
                 required String relationshipType,
                 required bool isPrimaryContact,
                 required String status,
                 required bool notificationsEnabled,
                 Value<int> rowid = const Value.absent(),
               }) => GuardianStudentLinksCompanion.insert(
+                studentUuid: studentUuid,
                 uuid: uuid,
                 studentServerId: studentServerId,
                 relationshipType: relationshipType,
@@ -5515,9 +5788,56 @@ class $$GuardianStudentLinksTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$GuardianStudentLinksTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({studentUuid = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (studentUuid) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.studentUuid,
+                                referencedTable:
+                                    $$GuardianStudentLinksTableReferences
+                                        ._studentUuidTable(db),
+                                referencedColumn:
+                                    $$GuardianStudentLinksTableReferences
+                                        ._studentUuidTable(db)
+                                        .uuid,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -5532,16 +5852,9 @@ typedef $$GuardianStudentLinksTableProcessedTableManager =
       $$GuardianStudentLinksTableAnnotationComposer,
       $$GuardianStudentLinksTableCreateCompanionBuilder,
       $$GuardianStudentLinksTableUpdateCompanionBuilder,
-      (
-        GuardianStudentLink,
-        BaseReferences<
-          _$AppDatabase,
-          $GuardianStudentLinksTable,
-          GuardianStudentLink
-        >,
-      ),
+      (GuardianStudentLink, $$GuardianStudentLinksTableReferences),
       GuardianStudentLink,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool studentUuid})
     >;
 typedef $$AttendanceRecordsTableCreateCompanionBuilder =
     AttendanceRecordsCompanion Function({

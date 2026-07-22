@@ -29,6 +29,7 @@ part 'app_database.g.dart';
     GuardianProfileDao,
     StudentsDao,
     GuardianStudentLinksDao,
+    LinkedChildrenDao,
     AttendanceRecordsDao,
     AnnouncementsDao,
     NotificationsDao,
