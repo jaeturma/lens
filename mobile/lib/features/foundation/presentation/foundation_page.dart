@@ -1,57 +1,112 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/database/app_database.dart';
 
 class FoundationPage extends StatelessWidget {
-  const FoundationPage({super.key});
+  const FoundationPage({required this.school, super.key});
+
+  final SchoolProfileData school;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Project LENS')),
+      appBar: AppBar(
+        title: Text(school.name),
+        leading: school.logoUrl != null
+            ? Padding(
+                padding: const EdgeInsets.all(8),
+                child: Image.network(
+                  school.logoUrl!,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.school_outlined),
+                ),
+              )
+            : null,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Icon(
-                        Icons.school_outlined,
-                        size: 72,
-                        color: Theme.of(context).colorScheme.primary,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (school.maintenanceMode) ...[
+                    _MaintenanceBanner(message: school.maintenanceMessage),
+                    const SizedBox(height: 16),
+                  ],
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Icon(
+                            Icons.school_outlined,
+                            size: 72,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Foundation Ready',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'The Flutter application now has routing, state management, secure token storage, API configuration, reusable states, and a testable feature-first structure.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          _InfoRow(label: 'API', value: AppConfig.apiBaseUrl),
+                          const _InfoRow(label: 'Target', value: 'Android'),
+                          const _InfoRow(
+                            label: 'Architecture',
+                            value: 'Feature-first',
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Foundation Ready',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'The Flutter application now has routing, state management, secure token storage, API configuration, reusable states, and a testable feature-first structure.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      _InfoRow(label: 'API', value: AppConfig.apiBaseUrl),
-                      const _InfoRow(label: 'Target', value: 'Android'),
-                      const _InfoRow(
-                        label: 'Architecture',
-                        value: 'Feature-first',
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MaintenanceBanner extends StatelessWidget {
+  const _MaintenanceBanner({required this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: scheme.onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message ?? 'This school is currently under maintenance.',
+              style: TextStyle(color: scheme.onErrorContainer),
+            ),
+          ),
+        ],
       ),
     );
   }

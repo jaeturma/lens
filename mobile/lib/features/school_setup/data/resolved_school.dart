@@ -1,5 +1,12 @@
+import 'package:drift/drift.dart';
+
+import '../../../core/database/app_database.dart';
+
 /// The school profile and mobile status data returned by
-/// `GET /schools/resolve/{publicId}` (`docs/api/SCHOOL-RESOLVER.md`).
+/// `GET /schools/resolve/{publicId}` (`docs/api/SCHOOL-RESOLVER.md`) — the
+/// same shape `GET /sync/bootstrap`'s `school` field uses, per
+/// `docs/api/SYNC.md` (both are serialized by the same
+/// `SchoolResolverResource` on the Laravel side).
 class ResolvedSchool {
   const ResolvedSchool({
     required this.schoolId,
@@ -39,4 +46,19 @@ class ResolvedSchool {
   final String? maintenanceMessage;
   final bool notificationsEnabled;
   final String minimumAppVersion;
+
+  SchoolProfileCompanion toCompanion() {
+    return SchoolProfileCompanion.insert(
+      uuid: uuid,
+      publicId: schoolId,
+      name: name,
+      logoUrl: Value(logoUrl),
+      timezone: timezone,
+      mobileEnabled: mobileEnabled,
+      maintenanceMode: maintenanceMode,
+      maintenanceMessage: Value(maintenanceMessage),
+      notificationsEnabled: notificationsEnabled,
+      minimumAppVersion: minimumAppVersion,
+    );
+  }
 }

@@ -1,10 +1,7 @@
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/network/api_exception.dart';
-import '../data/resolved_school.dart';
 import '../data/school_resolver_api.dart';
 import 'school_id_setup_state.dart';
 
@@ -46,25 +43,10 @@ class SchoolIdSetupController extends Notifier<SchoolIdSetupState> {
     await ref
         .read(appDatabaseProvider)
         .schoolProfileDao
-        .upsert(_toCompanion(school));
+        .upsert(school.toCompanion());
 
     // No further state transition: the school-binding gate reactively
     // watches school_profile and swaps away from this screen once the row
     // it just wrote lands, per docs/ARCHITECTURE.md's Runtime Data Flow.
-  }
-
-  SchoolProfileCompanion _toCompanion(ResolvedSchool school) {
-    return SchoolProfileCompanion.insert(
-      uuid: school.uuid,
-      publicId: school.schoolId,
-      name: school.name,
-      logoUrl: Value(school.logoUrl),
-      timezone: school.timezone,
-      mobileEnabled: school.mobileEnabled,
-      maintenanceMode: school.maintenanceMode,
-      maintenanceMessage: Value(school.maintenanceMessage),
-      notificationsEnabled: school.notificationsEnabled,
-      minimumAppVersion: school.minimumAppVersion,
-    );
   }
 }
