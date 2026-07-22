@@ -36,13 +36,11 @@ WP-06-02, attendance) and `AnnouncementPublished` (WP-06-03). Same
 "define the field now, a later package populates it" precedent WP-04-01
 set for `AttendanceRule`.
 
-### No Notifications Are Created Yet
-
-This package builds the model, its sync-feed participation, and nothing
-else — no rule creates a `GuardianNotification` row for any real event.
+This package (WP-06-01) itself creates no notifications — it builds the
+model and sync-feed participation only.
 `Guardian.notify_attendance`/`notify_announcements` (WP-02-02, already
-existing boolean preferences) are exactly what WP-06-02/06-03 will read
-before creating one; this package doesn't touch them.
+existing boolean preferences) are exactly what WP-06-02/06-03 read before
+creating one.
 
 ### Sync Feed
 
@@ -59,10 +57,63 @@ went through before its own dedicated sync-contract package landed
 (WP-04-02→WP-04-06, WP-05-01→WP-05-04). That wiring is WP-06-06's job
 ("Notification Sync and Delivery Logging").
 
+## Attendance Notification Rules (WP-06-02)
+
+`App\Actions\Notifications\NotifyGuardiansOfAttendanceEvent` creates one
+`GuardianNotification` per currently active, `notify_attendance`-enabled
+guardian of a summary's student, for five of the six `NotificationType`
+cases (`Arrival`, `Late`, `Departure`, `Absence`, `Correction` —
+`AnnouncementPublished` is rejected, that's WP-06-03's own action).
+Nothing calls this action directly from `ProcessRfidScan`/
+`MarkDailyAbsences`/`CorrectAttendanceDailySummary` — it's triggered
+entirely from `App\Observers\AttendanceDailySummaryObserver`, which
+already has full visibility into exactly what changed on every
+create/update (via `wasChanged()`/`getOriginal()`, the same mechanism
+already used to distinguish `SyncChangeAction::Corrected` from
+`Updated`):
+
+- **Arrival vs. Late**: decided by the linked `AttendanceEvent.is_late`
+  (WP-04-03), only when `arrival_event_id` transitions from `null` to
+  set — the "first entry of the day" rule (WP-04-03) already guarantees
+  this only happens once per day, so a repeat entry-device tap never
+  re-notifies.
+- **Departure**: fires every time `departure_event_id` changes to a new
+  value, including repeatedly on the same day — a student who leaves and
+  returns produces a new, real departure notification each time (not
+  treated as a "duplicate"; each represents a genuinely new tap).
+- **Absence**: fires only when `is_absent` transitions `false` → `true`
+  outside a correction — covers both `MarkDailyAbsences` (WP-04-04) and a
+  brand-new summary created already absent. Re-running the scheduled
+  sweep never re-notifies, since it only ever updates a student not
+  already marked absent (WP-04-04's own duplicate-prevention).
+- **Correction**: takes over entirely when
+  `AttendanceDailySummary::$wasCorrected` (WP-04-06) is set — never also
+  classified as Arrival/Departure/Absence, and only fires when
+  `is_absent`/`arrival_event_id`/`departure_event_id` actually changed,
+  so a no-op correction (the same value re-applied) stays silent —
+  "corrections where appropriate." The notification body is deliberately
+  generic and does **not** repeat the administrator's audit-log reason
+  text (`App\Actions\Audit\RecordAuditLog`'s `metadata.reason`) — that's
+  internal context (may reference other students, device faults, etc.),
+  not necessarily meant for guardian-facing display.
+- **Recipients**: every `Guardian` with a currently **active**
+  `GuardianStudentLink` to the student and `notify_attendance = true` —
+  a revoked link or an opted-out guardian receives nothing. Each
+  qualifying guardian gets their own notification row (a student with two
+  guardians produces two rows, one per guardian) — "one notification"
+  means "exactly one per qualifying guardian," not one shared row.
+- **Duplicate prevention has no logic of its own** in this action — it
+  relies entirely on the fact that every one of its three callers (via
+  the observer) already only reaches it at a genuine, one-time state
+  transition. This is why the trigger point is the daily-summary
+  observer, not the raw `AttendanceEvent` creation: a repeat entry-device
+  tap creates its own `AttendanceEvent` row for audit purposes (WP-04-03)
+  without ever updating the summary, so it never reaches this action at
+  all.
+
 ## Not Yet Implemented
 
-Attendance notification rules (WP-06-02), announcement notifications
-(WP-06-03), device token registration (WP-06-04), push delivery
-(WP-06-05), and notification sync/delivery logging (WP-06-06) are the
-remaining phase-06 work packages — none exist yet. This document will
-grow as they land.
+Announcement notifications (WP-06-03), device token registration
+(WP-06-04), push delivery (WP-06-05), and notification sync/delivery
+logging (WP-06-06) are the remaining phase-06 work packages — none exist
+yet. This document will grow as they land.
