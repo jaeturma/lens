@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Store DateTime columns as ISO-8601 text rather than unix
+          # timestamps. Unix-timestamp storage round-trips through the
+          # platform's local timezone on read, which silently shifts every
+          # synced UTC timestamp (attendance/announcement/notification
+          # times) by the device's UTC offset.
+          store_date_time_values_as_text: true
