@@ -2,9 +2,12 @@
 
 namespace App\Http\Requests\Announcements;
 
+use App\Enums\AnnouncementAudienceType;
 use App\Models\Announcement;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class StoreAnnouncementRequest extends FormRequest
 {
@@ -22,6 +25,11 @@ class StoreAnnouncementRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:10000'],
             'expires_at' => ['nullable', 'date', 'after:now'],
+            'audience_type' => ['required', new Enum(AnnouncementAudienceType::class)],
+            'audience_grade' => ['nullable', 'required_if:audience_type,grade', 'required_if:audience_type,section', 'string', 'max:50'],
+            'audience_section' => ['nullable', 'required_if:audience_type,section', 'string', 'max:50'],
+            'student_ids' => ['nullable', 'required_if:audience_type,students', 'array'],
+            'student_ids.*' => ['integer', Rule::exists('students', 'id')],
         ];
     }
 }

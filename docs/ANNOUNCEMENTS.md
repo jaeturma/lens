@@ -75,9 +75,9 @@ Administrator-only web screens under `/announcements`
   `update`) — ordinary CRUD, mirroring `StudentController`/
   `RfidDeviceController` exactly. `store` always creates a `Draft`
   (`author_id` set from the acting user) — there is no way to create an
-  announcement in any other status from the form. `update` only ever
-  touches `title`/`body`/`expires_at`; status never changes through this
-  endpoint.
+  announcement in any other status from the form. `update` touches
+  `title`/`body`/`expires_at`, and (WP-05-03) the audience fields; status
+  never changes through this endpoint.
 - Three single-purpose action controllers —
   `PublishAnnouncementController`, `WithdrawAnnouncementController`,
   `ExpireAnnouncementController` — call the WP-05-01 actions (plus a new
@@ -106,9 +106,52 @@ from `Published`:
   ... expire" is one of WP-05-02's own acceptance criteria, distinct from
   the scheduled sweep.
 
+## Audiences (WP-05-03)
+
+Every announcement targets exactly one audience
+(`App\Enums\AnnouncementAudienceType`: `All`, `Grade`, `Section`,
+`Students` — new columns `audience_type`/`audience_grade`/
+`audience_section` on `announcements`, default `All`), resolved without
+any campaign/segment-building complexity:
+
+- **All** — every active (`StudentStatus::Active`) student.
+- **Grade** — active students whose `grade` matches `audience_grade`
+  exactly (free-text, same convention as `Student.grade` elsewhere in the
+  app — no separate grade/section lookup tables exist).
+- **Section** — active students matching **both** `audience_grade` and
+  `audience_section` — a section is only meaningful within a grade (two
+  different grades can each have their own "Diamond" section), so
+  targeting by section alone would be ambiguous.
+- **Students** — an explicit set via the new `announcement_student` pivot
+  table (`App\Models\Announcement::students()`, `BelongsToMany`), still
+  filtered to active students only — a selected-but-since-withdrawn
+  student's guardian is not targeted, keeping behavior consistent with
+  the other three types rather than carving out an exception.
+
+Two actions, both pure audience matching — **neither considers the
+announcement's `status`**, that's a separate concern layered on by the
+caller (WP-05-04):
+
+- `App\Actions\Announcements\ResolveAnnouncementAudience` — an
+  announcement to its matching active student IDs.
+- `App\Actions\Announcements\GuardianMatchesAnnouncementAudience` — an
+  announcement and a guardian to a boolean: does the audience overlap the
+  guardian's **currently active** linked students
+  (`Guardian::activeLinks()`, the same "currently active" rule
+  `ScopeChangesToGuardian` already applies for attendance, WP-04-06).
+  Revoking a link removes that student from `activeLinks()` immediately,
+  so a revoked link stops matching on the very next call — no caching, no
+  separate cleanup step.
+- Audience selection was added to the WP-05-02 create/edit forms (a
+  native `<select multiple>` for the Students case — no new component or
+  package, matching "without campaign-level complexity").
+
 ### Not Yet Implemented
 
-Audience targeting (WP-05-03) and the guardian-facing sync contract
-(WP-05-04) are the remaining phase-05 work packages — neither exists yet.
-Every announcement, published or not, is still invisible to every
-guardian (see "Sync Feed and Draft Invisibility" above).
+The guardian-facing sync contract (WP-05-04) is the remaining phase-05
+work package. Every announcement, published or not, and regardless of
+audience, is still invisible to every guardian — `ScopeChangesToGuardian`
+has no `announcement` branch yet, and nothing calls
+`GuardianMatchesAnnouncementAudience` from a guardian-facing endpoint.
+That wiring, plus pairing audience matching with a `Published`-only
+check, is WP-05-04's job.

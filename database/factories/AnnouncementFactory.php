@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AnnouncementAudienceType;
 use App\Enums\AnnouncementStatus;
 use App\Models\Announcement;
 use App\Models\User;
@@ -26,6 +27,9 @@ class AnnouncementFactory extends Factory
             'status' => AnnouncementStatus::Draft,
             'published_at' => null,
             'expires_at' => null,
+            'audience_type' => AnnouncementAudienceType::All,
+            'audience_grade' => null,
+            'audience_section' => null,
         ];
     }
 }

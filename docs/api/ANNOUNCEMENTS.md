@@ -12,6 +12,9 @@ Defines targeted active announcements, expiration, and synchronization behavior.
 - WP-05-02 added administrator-only **web** screens under
   `/announcements` (Inertia, session-authenticated) — not a JSON/mobile
   API. See `docs/ANNOUNCEMENTS.md`'s "Administration" section.
-- No mobile/device-facing HTTP contract exists yet. Audience targeting
-  (WP-05-03) and the guardian-facing bootstrap/incremental sync contract
-  (WP-05-04) are not built.
+- WP-05-03 added audience targeting (all/grade/section/selected students)
+  and resolution logic, exposed through the same admin web forms — still
+  no mobile/device-facing HTTP contract. See `docs/ANNOUNCEMENTS.md`'s
+  "Audiences" section.
+- No mobile/device-facing HTTP contract exists yet. The guardian-facing
+  bootstrap/incremental sync contract (WP-05-04) is not built.

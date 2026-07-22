@@ -5,8 +5,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { AssignableStudent } from '@/types';
 
-export default function AnnouncementsCreate() {
+type Props = {
+    assignableStudents: AssignableStudent[];
+};
+
+export default function AnnouncementsCreate({ assignableStudents }: Props) {
     return (
         <div className="max-w-xl space-y-6 p-4">
             <Head title="New announcement" />
@@ -56,6 +61,70 @@ export default function AnnouncementsCreate() {
                                 type="datetime-local"
                             />
                             <InputError message={errors.expires_at} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="audience_type">Audience</Label>
+                            <select
+                                id="audience_type"
+                                name="audience_type"
+                                required
+                                defaultValue="all"
+                                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                            >
+                                <option value="all">All guardians</option>
+                                <option value="grade">A grade</option>
+                                <option value="section">A section</option>
+                                <option value="students">
+                                    Selected students
+                                </option>
+                            </select>
+                            <InputError message={errors.audience_type} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="audience_grade">
+                                Grade (for Grade or Section audiences)
+                            </Label>
+                            <Input
+                                id="audience_grade"
+                                name="audience_grade"
+                                placeholder="Grade 7"
+                            />
+                            <InputError message={errors.audience_grade} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="audience_section">
+                                Section (for Section audiences)
+                            </Label>
+                            <Input
+                                id="audience_section"
+                                name="audience_section"
+                                placeholder="Diamond"
+                            />
+                            <InputError message={errors.audience_section} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="student_ids">
+                                Students (for Selected students audiences —
+                                ctrl/cmd-click to select more than one)
+                            </Label>
+                            <select
+                                id="student_ids"
+                                name="student_ids[]"
+                                multiple
+                                size={6}
+                                className="w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                            >
+                                {assignableStudents.map((student) => (
+                                    <option key={student.id} value={student.id}>
+                                        {student.name} ({student.lrn})
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={errors.student_ids} />
                         </div>
 
                         <Button type="submit" disabled={processing}>

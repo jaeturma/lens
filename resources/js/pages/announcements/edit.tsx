@@ -5,13 +5,20 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Announcement } from '@/types';
+import type { Announcement, AssignableStudent } from '@/types';
 
 type Props = {
     announcement: Announcement;
+    assignableStudents: AssignableStudent[];
 };
 
-export default function AnnouncementsEdit({ announcement }: Props) {
+export default function AnnouncementsEdit({
+    announcement,
+    assignableStudents,
+}: Props) {
+    const selectedStudentIds = new Set(
+        (announcement.students ?? []).map((student) => student.id),
+    );
     setLayoutProps({
         breadcrumbs: [
             { title: 'Announcements', href: AnnouncementController.index() },
@@ -75,6 +82,77 @@ export default function AnnouncementsEdit({ announcement }: Props) {
                                 }
                             />
                             <InputError message={errors.expires_at} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="audience_type">Audience</Label>
+                            <select
+                                id="audience_type"
+                                name="audience_type"
+                                required
+                                defaultValue={announcement.audience_type}
+                                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                            >
+                                <option value="all">All guardians</option>
+                                <option value="grade">A grade</option>
+                                <option value="section">A section</option>
+                                <option value="students">
+                                    Selected students
+                                </option>
+                            </select>
+                            <InputError message={errors.audience_type} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="audience_grade">
+                                Grade (for Grade or Section audiences)
+                            </Label>
+                            <Input
+                                id="audience_grade"
+                                name="audience_grade"
+                                placeholder="Grade 7"
+                                defaultValue={announcement.audience_grade ?? ''}
+                            />
+                            <InputError message={errors.audience_grade} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="audience_section">
+                                Section (for Section audiences)
+                            </Label>
+                            <Input
+                                id="audience_section"
+                                name="audience_section"
+                                placeholder="Diamond"
+                                defaultValue={
+                                    announcement.audience_section ?? ''
+                                }
+                            />
+                            <InputError message={errors.audience_section} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="student_ids">
+                                Students (for Selected students audiences —
+                                ctrl/cmd-click to select more than one)
+                            </Label>
+                            <select
+                                id="student_ids"
+                                name="student_ids[]"
+                                multiple
+                                size={6}
+                                defaultValue={[...selectedStudentIds].map(
+                                    String,
+                                )}
+                                className="w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                            >
+                                {assignableStudents.map((student) => (
+                                    <option key={student.id} value={student.id}>
+                                        {student.name} ({student.lrn})
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={errors.student_ids} />
                         </div>
 
                         <Button type="submit" disabled={processing}>

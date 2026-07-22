@@ -31,6 +31,21 @@ function Field({ label, value }: { label: string; value: string }) {
     );
 }
 
+function audienceDescription(announcement: Announcement): string {
+    switch (announcement.audience_type) {
+        case 'all':
+            return 'All guardians';
+        case 'grade':
+            return `Grade: ${announcement.audience_grade}`;
+        case 'section':
+            return `Section: ${announcement.audience_grade} - ${announcement.audience_section}`;
+        case 'students':
+            return (announcement.students ?? [])
+                .map((student) => student.name)
+                .join(', ');
+    }
+}
+
 export default function AnnouncementsShow({ announcement }: Props) {
     setLayoutProps({
         breadcrumbs: [
@@ -68,6 +83,10 @@ export default function AnnouncementsShow({ announcement }: Props) {
                 <Field
                     label="Expires at"
                     value={announcement.expires_at ?? 'Never'}
+                />
+                <Field
+                    label="Audience"
+                    value={audienceDescription(announcement)}
                 />
             </dl>
 
