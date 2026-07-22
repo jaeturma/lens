@@ -7,6 +7,8 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../auth/application/session_controller.dart';
+import '../../auth/presentation/login_page.dart';
 import '../../foundation/presentation/foundation_page.dart';
 import 'school_id_setup_page.dart';
 import 'school_status_blocked_page.dart';
@@ -19,8 +21,8 @@ final schoolBindingProvider = StreamProvider((ref) {
 /// Binding Rules): renders the School ID setup flow until a school is
 /// bound locally — reactively, straight off `school_profile`, per
 /// `docs/ARCHITECTURE.md`'s Runtime Data Flow — then whatever comes after.
-/// Currently that's the placeholder foundation page; later work packages
-/// (WP-07-06/07) replace it with real login/home routing.
+/// Currently that's login/the placeholder foundation page; WP-07-07
+/// refines session restoration on top of this.
 class SchoolBindingGate extends ConsumerWidget {
   const SchoolBindingGate({super.key});
 
@@ -74,11 +76,40 @@ class _BoundSchoolGate extends ConsumerWidget {
                     'A newer version of this app is required to continue. '
                     'Please update from the Play Store.',
               )
-            : FoundationPage(school: school),
+            : _AuthenticationGate(school: school),
       // A version-lookup failure is a plugin/platform hiccup unrelated to
       // whether the app is actually compatible — fail open rather than
       // lock the guardian out of a working app over it.
-      _ => FoundationPage(school: school),
+      _ => _AuthenticationGate(school: school),
+    };
+  }
+}
+
+/// "Authenticated routing" (WP-07-06): a bound, non-blocked installation
+/// still needs a guardian session before showing app content.
+/// `sessionControllerProvider`'s own initial check is a naive "does a
+/// token exist locally" — validating that token is still accepted by the
+/// server, and returning here after it expires, is WP-07-07's job
+/// (Session Restoration and Logout).
+class _AuthenticationGate extends ConsumerWidget {
+  const _AuthenticationGate({required this.school});
+
+  final SchoolProfileData school;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionControllerProvider);
+
+    return switch (session) {
+      AsyncData(:final value) =>
+        value ? FoundationPage(school: school) : LoginPage(school: school),
+      // An unreadable session is treated the same as no session — fail
+      // safe by asking the guardian to log in again, not by assuming
+      // they're still authenticated. Loading (the initial secure-storage
+      // read) gets its own branch so an already-logged-in guardian never
+      // sees a login-screen flash while it resolves.
+      AsyncError() => LoginPage(school: school),
+      _ => const AppLoadingIndicator(),
     };
   }
 }

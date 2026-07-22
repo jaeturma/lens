@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/app/lens_app.dart';
 import 'package:mobile/core/database/app_database.dart';
 import 'package:mobile/core/database/database_provider.dart';
+import 'package:mobile/features/auth/application/session_controller.dart';
 import 'package:mobile/features/school_setup/data/resolved_school.dart';
 import 'package:mobile/features/school_setup/data/school_resolver_api.dart';
 
@@ -68,6 +69,9 @@ void main() {
             appDatabaseProvider.overrideWithValue(database),
             schoolResolverApiProvider.overrideWithValue(
               _FakeSchoolResolverApi(),
+            ),
+            sessionControllerProvider.overrideWith(
+              FakeAuthenticatedSession.new,
             ),
           ],
           child: const LensApp(),
