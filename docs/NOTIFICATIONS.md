@@ -111,9 +111,47 @@ already used to distinguish `SyncChangeAction::Corrected` from
   without ever updating the summary, so it never reaches this action at
   all.
 
+## Announcement Notifications (WP-06-03)
+
+`App\Actions\Notifications\NotifyGuardiansOfAnnouncement` creates one
+`GuardianNotification` (`NotificationType::AnnouncementPublished`) per
+currently active, `notify_announcements`-enabled guardian whose audience
+matches (`App\Actions\Announcements\ResolveAnnouncementAudience`,
+WP-05-03) — **deduplicated per guardian**, not per matching child: a
+guardian with two students who both match still gets exactly one
+notification, since the announcement's content doesn't vary by which
+child it matched through. Title/body mirror the announcement's own
+`title`/`body` directly rather than inventing separate copy. Triggered
+from `App\Observers\AnnouncementObserver`, same "the observer already
+knows exactly what changed" pattern WP-06-02 used for attendance.
+
+### Publish and Republish Behavior (this package's own scope item)
+
+- **Publish**: notifies exactly once, at the `Draft` → `Published`
+  transition (`updated()`'s existing `$leftDraft` check, already computed
+  for the `Created` sync action) — or immediately on `created()` for the
+  admin-UI-unreachable case of an announcement created directly as
+  `Published`. A `Draft` never notifies, whether just created or edited
+  while still a draft (WP-05-01's observer already returns early for any
+  `Draft`-status create/update).
+- **Republish, decided as: not supported.** Editing an already-`Published`
+  announcement — title, body, or audience — **never sends additional
+  notifications**, in either direction: a widened audience does not
+  backfill a notification to newly-matching guardians, and a narrowed one
+  does not retract anything already sent. `PublishAnnouncement` itself
+  already rejects a second publish attempt on a non-`Draft` announcement
+  (`InvalidAnnouncementTransitionException`, WP-05-01), so there is no
+  code path that could re-run the notification round even by accident. An
+  administrator who wants to reach a different or wider audience
+  withdraws and creates a **new** announcement — the same "a withdrawn
+  announcement isn't resurrected, a new one is created" precedent
+  WP-05-01 already set for the `Withdrawn`/`Expired` terminal states
+  themselves, extended here to cover audience changes too.
+- Withdrawing and (both scheduled and manual) expiring never notify —
+  only the publish transition does.
+
 ## Not Yet Implemented
 
-Announcement notifications (WP-06-03), device token registration
-(WP-06-04), push delivery (WP-06-05), and notification sync/delivery
-logging (WP-06-06) are the remaining phase-06 work packages — none exist
-yet. This document will grow as they land.
+Device token registration (WP-06-04), push delivery (WP-06-05), and
+notification sync/delivery logging (WP-06-06) are the remaining phase-06
+work packages — none exist yet. This document will grow as they land.
