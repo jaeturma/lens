@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Actions\Sync\RecordSyncChange;
 use App\Enums\SyncChangeAction;
+use App\Jobs\SendPushSignal;
 use App\Models\GuardianNotification;
 
 class GuardianNotificationObserver
@@ -13,6 +14,8 @@ class GuardianNotificationObserver
     public function created(GuardianNotification $notification): void
     {
         ($this->recordSyncChange)($notification, SyncChangeAction::Created, $this->payload($notification));
+
+        SendPushSignal::dispatch($notification);
     }
 
     /**

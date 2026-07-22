@@ -227,8 +227,97 @@ token as part of its own logout flow, before or after discarding its
 Sanctum token — that's Flutter-side work, out of scope for this session
 (Laravel/API only).
 
+## Firebase Push Signal Delivery (WP-06-05)
+
+`App\Jobs\SendPushSignal` (`ShouldQueue`) sends a push signal to every
+**active** device token of a `GuardianNotification`'s guardian, via
+[`kreait/laravel-firebase`](https://github.com/kreait/laravel-firebase)
+(installed for this package — the standard, actively-maintained way to
+call Firebase Cloud Messaging's v1 API from Laravel without hand-rolling
+Google's OAuth2 service-account JWT flow). Dispatched from
+`App\Observers\GuardianNotificationObserver::created()` — "push delivery
+is queued" is satisfied by `ShouldQueue` itself; no bespoke queueing
+mechanism was needed.
+
+### The Payload Is Genuinely Empty of Content
+
+This package's own scope item — "do not place authoritative attendance
+or announcement bodies solely in the push payload" — is implemented as
+strictly as that reading allows: the FCM message carries **no**
+`notification` block at all (so no OS-level banner/sound is triggered by
+the push itself on any platform) and its `data` payload is limited to
+`{"type": "sync_signal", "notification_type": "<NotificationType value>"}`
+— never the notification's own `title`/`body`, never attendance or
+announcement content. The push is purely a wake-up trigger; the
+authoritative content is the `GuardianNotification` row itself, which
+the client fetches by syncing after waking up — the same "the push
+signal only says 'go sync,' it's never itself the source of truth"
+principle the package's Objective states directly. Making that content
+actually reachable **over sync** is WP-06-06's job — `GuardianNotification`
+still isn't guardian-visible via `ScopeChangesToGuardian` as of this
+package either.
+
+### Failure Handling
+
+- **"Failure does not delete notification records"**: nothing in this
+  job's failure path ever touches the `GuardianNotification` row beyond
+  its own `delivery_status` — a Firebase call that throws (unreachable,
+  misconfigured, credentials missing, or a genuine FCM-reported error) is
+  caught, logged, and recorded as `NotificationDeliveryStatus::Failed`,
+  never re-thrown. A record with no active device token at all is left
+  `Pending` (not `Failed` — no delivery attempt was actually made; the
+  enum has no third "nothing to do" state, and inventing one wasn't
+  needed since the guardian may simply not have registered a device
+  yet).
+- **Invalid/unknown tokens are not acted on here.** FCM's response can
+  identify specific tokens as invalid or unknown
+  (`MulticastSendReport::invalidTokens()`/`unknownTokens()`), but
+  deactivating a `DeviceToken` in response to that is explicitly
+  WP-06-06's own scope item ("invalid-token deactivation"), not this
+  one's — this job only decides the notification's own `Sent`/`Failed`
+  status (at least one successful send among the targeted tokens = `Sent`).
+- No retry logic was added — "retry state" is WP-06-06's own scope item
+  too. A failed job is not automatically re-attempted by this package;
+  it stays queued-and-attempted-once.
+
+### Secrets Are Not Committed
+
+The Firebase service account JSON is sourced entirely from the
+`FIREBASE_CREDENTIALS` (or `GOOGLE_APPLICATION_CREDENTIALS`) environment
+variable — `config/firebase.php` (trimmed from the package's published
+default to just what Cloud Messaging needs; the Firestore/Realtime
+Database/Storage/Auth-tenant sections that ship by default were removed
+as unused dead config) never hardcodes a path or embeds a credential.
+`.gitignore` gained explicit entries for a conventional
+`firebase-credentials.json` filename and `storage/app/firebase-credentials.json`,
+on top of the `.env*` patterns already excluded — defense in depth, since
+the real secret should never be anywhere in the repository regardless of
+which convention an operator picks. No real Firebase project or
+credentials exist in this development environment; provisioning them for
+each real environment is WP-08-08's ("Laravel Deployment Queue and
+Scheduler") documented job, not this package's.
+
+### Testing Without Real Firebase Credentials
+
+`Kreait\Firebase\Contract\Messaging` is Laravel-container-bound as a
+singleton that lazily connects to a real Firebase project — resolving it
+with no credentials configured throws quickly (a local
+`RuntimeException`, not a network hang, confirmed by direct
+measurement: ~2 seconds, no outbound call attempted). Even so, letting
+every test that creates a `GuardianNotification` trigger a real attempt
+would be slow and environment-dependent (dozens of pre-existing WP-06-01/
+02/03 tests do exactly that, and `QUEUE_CONNECTION=sync` in `phpunit.xml`
+means a dispatched job runs **inline, immediately** — there is no
+deferred queue to *not* process in tests). `tests/Pest.php` now calls
+`Queue::fake()` in a global `beforeEach` for every Feature test — safe
+because `SendPushSignal` is the only queued job in the app, so this has
+zero effect on anything else. `tests/Feature/Jobs/SendPushSignalTest.php`
+exercises the job's own logic directly (`(new SendPushSignal($notification))->handle($mockedMessaging)`,
+via Mockery against the `Messaging` contract) rather than through the
+queue, so it needs no real credentials either.
+
 ## Not Yet Implemented
 
-Push delivery (WP-06-05) and notification sync/delivery logging
-(WP-06-06) are the remaining phase-06 work packages — neither exists
-yet. This document will grow as they land.
+Notification sync and delivery logging (WP-06-06) is the remaining
+phase-06 work package — it doesn't exist yet. This document will grow as
+it lands.

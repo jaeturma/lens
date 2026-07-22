@@ -3,6 +3,7 @@
 use App\Models\School;
 use App\Models\SchoolSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /*
@@ -18,6 +19,17 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    ->beforeEach(function () {
+        // QUEUE_CONNECTION=sync in phpunit.xml means a dispatched job runs
+        // immediately, inline. Without this, App\Jobs\SendPushSignal
+        // (WP-06-05) would attempt a real Firebase call as a side effect
+        // of every test that creates a GuardianNotification — most of
+        // which have nothing to do with push delivery. Faked globally
+        // here since it's the only queued job in the app today; a test
+        // that actually wants to exercise SendPushSignal calls its
+        // handle() method directly instead of relying on the queue.
+        Queue::fake();
+    })
     ->in('Feature');
 
 /*
