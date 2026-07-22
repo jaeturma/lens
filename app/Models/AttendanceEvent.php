@@ -16,13 +16,14 @@ use Illuminate\Support\Carbon;
  * @property int $student_id
  * @property int $rfid_device_id
  * @property AttendanceEventType $event_type
+ * @property bool $is_late
  * @property Carbon $occurred_at
  * @property Carbon $created_at
  * @property-read RfidScan $rfidScan
  * @property-read Student $student
  * @property-read RfidDevice $device
  */
-#[Fillable(['rfid_scan_id', 'student_id', 'rfid_device_id', 'event_type', 'occurred_at'])]
+#[Fillable(['rfid_scan_id', 'student_id', 'rfid_device_id', 'event_type', 'occurred_at', 'is_late'])]
 class AttendanceEvent extends Model
 {
     /** @use HasFactory<AttendanceEventFactory> */
@@ -37,6 +38,7 @@ class AttendanceEvent extends Model
     {
         return [
             'event_type' => AttendanceEventType::class,
+            'is_late' => 'boolean',
             'occurred_at' => 'datetime',
             'created_at' => 'datetime',
         ];

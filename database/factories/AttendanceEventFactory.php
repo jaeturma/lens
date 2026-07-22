@@ -26,6 +26,7 @@ class AttendanceEventFactory extends Factory
             'student_id' => Student::factory(),
             'rfid_device_id' => RfidDevice::factory(),
             'event_type' => AttendanceEventType::Arrival,
+            'is_late' => false,
             'occurred_at' => now(),
         ];
     }

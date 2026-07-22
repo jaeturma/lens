@@ -7,6 +7,7 @@ use App\Enums\RfidDeviceDirectionMode;
 use App\Enums\RfidScanClassification;
 use App\Models\AttendanceDailySummary;
 use App\Models\AttendanceEvent;
+use App\Models\AttendanceRule;
 use App\Models\RfidDevice;
 use App\Models\RfidScan;
 use App\Models\School;
@@ -47,15 +48,165 @@ test('a valid scan on an exit device creates a departure event', function () {
     expect($event->event_type)->toBe(AttendanceEventType::Departure);
 });
 
-test('a valid scan on a bidirectional device is left unprocessed', function () {
+test('the first scan of the day on a bidirectional device is an arrival', function () {
     $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Both]);
     $student = Student::factory()->create();
     $scan = validScanFor($device, $student);
 
     $event = (new ProcessRfidScan)($scan);
 
-    expect($event)->toBeNull();
-    expect(AttendanceEvent::query()->count())->toBe(0);
+    expect($event->event_type)->toBe(AttendanceEventType::Arrival);
+});
+
+test('a second same-day scan on a bidirectional device is a departure', function () {
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Both]);
+    $student = Student::factory()->create();
+    $uid = 'BOTH0001';
+    app(AssignRfidCard::class)($student, $uid);
+
+    $firstScan = RfidScan::factory()->for($device, 'device')->create([
+        'uid' => $uid,
+        'classification' => RfidScanClassification::Valid,
+    ]);
+    $firstEvent = (new ProcessRfidScan)($firstScan);
+
+    $secondScan = RfidScan::factory()->for($device, 'device')->create([
+        'uid' => $uid,
+        'classification' => RfidScanClassification::Valid,
+    ]);
+    $secondEvent = (new ProcessRfidScan)($secondScan);
+
+    expect($firstEvent->event_type)->toBe(AttendanceEventType::Arrival);
+    expect($secondEvent->event_type)->toBe(AttendanceEventType::Departure);
+
+    $summary = AttendanceDailySummary::query()->where('student_id', $student->id)->firstOrFail();
+    expect($summary->arrival_event_id)->toBe($firstEvent->id);
+    expect($summary->departure_event_id)->toBe($secondEvent->id);
+});
+
+test('a third same-day scan on a bidirectional device is another departure, not a new arrival', function () {
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Both]);
+    $student = Student::factory()->create();
+    $uid = 'BOTH0002';
+    app(AssignRfidCard::class)($student, $uid);
+
+    $events = collect(range(1, 3))->map(function () use ($device, $uid) {
+        $scan = RfidScan::factory()->for($device, 'device')->create([
+            'uid' => $uid,
+            'classification' => RfidScanClassification::Valid,
+        ]);
+
+        return (new ProcessRfidScan)($scan);
+    });
+
+    expect($events->pluck('event_type')->all())->toBe([
+        AttendanceEventType::Arrival,
+        AttendanceEventType::Departure,
+        AttendanceEventType::Departure,
+    ]);
+
+    $summary = AttendanceDailySummary::query()->where('student_id', $student->id)->firstOrFail();
+    expect($summary->arrival_event_id)->toBe($events[0]->id);
+    expect($summary->departure_event_id)->toBe($events[2]->id);
+});
+
+test('a second entry-device scan the same day does not replace the first arrival', function () {
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Entry]);
+    $student = Student::factory()->create();
+    $uid = 'ENTRY001';
+    app(AssignRfidCard::class)($student, $uid);
+
+    $firstScan = RfidScan::factory()->for($device, 'device')->create([
+        'uid' => $uid,
+        'classification' => RfidScanClassification::Valid,
+    ]);
+    $firstEvent = (new ProcessRfidScan)($firstScan);
+
+    $secondScan = RfidScan::factory()->for($device, 'device')->create([
+        'uid' => $uid,
+        'classification' => RfidScanClassification::Valid,
+    ]);
+    $secondEvent = (new ProcessRfidScan)($secondScan);
+
+    expect($secondEvent->event_type)->toBe(AttendanceEventType::Arrival);
+    expect($secondEvent->id)->not->toBe($firstEvent->id);
+
+    $summary = AttendanceDailySummary::query()->where('student_id', $student->id)->firstOrFail();
+    expect($summary->arrival_event_id)->toBe($firstEvent->id);
+});
+
+test('an arrival after the configured cutoff is flagged late', function () {
+    $school = School::factory()->create();
+    SchoolSettings::factory()->for($school)->create(['timezone' => 'UTC']);
+    AttendanceRule::factory()->for($school)->create(['arrival_cutoff_time' => '07:30:00']);
+
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Entry]);
+    $student = Student::factory()->create();
+    $uid = 'LATE0001';
+    app(AssignRfidCard::class)($student, $uid);
+
+    $scan = RfidScan::withoutEvents(function () use ($device, $uid) {
+        $scan = RfidScan::factory()->for($device, 'device')->create([
+            'uid' => $uid,
+            'classification' => RfidScanClassification::Valid,
+        ]);
+        $scan->forceFill(['created_at' => '2026-07-22 08:00:00'])->save();
+
+        return $scan->fresh();
+    });
+
+    $event = (new ProcessRfidScan)($scan);
+
+    expect($event->is_late)->toBeTrue();
+});
+
+test('an arrival before the configured cutoff is not flagged late', function () {
+    $school = School::factory()->create();
+    SchoolSettings::factory()->for($school)->create(['timezone' => 'UTC']);
+    AttendanceRule::factory()->for($school)->create(['arrival_cutoff_time' => '07:30:00']);
+
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Entry]);
+    $student = Student::factory()->create();
+    $uid = 'LATE0002';
+    app(AssignRfidCard::class)($student, $uid);
+
+    $scan = RfidScan::withoutEvents(function () use ($device, $uid) {
+        $scan = RfidScan::factory()->for($device, 'device')->create([
+            'uid' => $uid,
+            'classification' => RfidScanClassification::Valid,
+        ]);
+        $scan->forceFill(['created_at' => '2026-07-22 07:00:00'])->save();
+
+        return $scan->fresh();
+    });
+
+    $event = (new ProcessRfidScan)($scan);
+
+    expect($event->is_late)->toBeFalse();
+});
+
+test('an arrival is never flagged late when no attendance rule is configured', function () {
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Entry]);
+    $student = Student::factory()->create();
+    $scan = validScanFor($device, $student);
+
+    $event = (new ProcessRfidScan)($scan);
+
+    expect($event->is_late)->toBeFalse();
+});
+
+test('a departure event is never flagged late', function () {
+    $school = School::factory()->create();
+    SchoolSettings::factory()->for($school)->create(['timezone' => 'UTC']);
+    AttendanceRule::factory()->for($school)->create(['arrival_cutoff_time' => '07:30:00']);
+
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Exit]);
+    $student = Student::factory()->create();
+    $scan = validScanFor($device, $student);
+
+    $event = (new ProcessRfidScan)($scan);
+
+    expect($event->is_late)->toBeFalse();
 });
 
 test('a non-valid classified scan is not processed', function () {

@@ -83,11 +83,42 @@ automatically via `App\Observers\RfidScanObserver` on every scan
   scoping. `AttendanceEvent` itself is not synced — the daily summary
   already carries what a mobile client needs.
 
+## Arrival, Departure, and Late Detection (WP-04-03)
+
+`ProcessRfidScan` (WP-04-02) now fully resolves event type and lateness
+instead of leaving `both`-direction scans unprocessed:
+
+- **First arrival of the day wins.** Once a student's daily summary has an
+  `arrival_event_id`, further entry-type scans that day still create their
+  own `AttendanceEvent` (so every scan stays traceable via
+  `RfidScan::attendanceEvent`), they just don't replace the recorded
+  arrival. This is the "duplicate scans are not misclassified" guarantee —
+  a repeat tap is still correctly typed as an arrival event, it simply
+  isn't the one the summary points to.
+- **Most recent departure wins**, unchanged from WP-04-02 — a student who
+  leaves and returns can still be re-scanned, and the summary always
+  reflects the latest exit.
+- **`both`-direction devices toggle deterministically** off the student's
+  own day so far, not the device's own history: no arrival recorded yet
+  today → this tap is the arrival; an arrival already exists → this tap is
+  a departure (repeatedly, for every further tap that day — the same
+  "most recent wins" rule `exit`-mode devices use). This is decided inside
+  the same `DB::transaction()` that reads the day's summary
+  (`lockForUpdate()`), so two near-simultaneous taps on the same
+  bidirectional device can't both resolve to "arrival."
+- **Lateness is a per-event boolean** (`attendance_events.is_late`), not a
+  third `AttendanceEventType` case — computed only for arrival-type events,
+  by comparing the scan's `occurred_at` against
+  `AttendanceRule::arrivalCutoffFor()` (WP-04-01) in the school's
+  configured timezone. A departure event's `is_late` is always `false`. If
+  no `AttendanceRule` row exists yet (school not configured), nothing is
+  ever flagged late — the same "unconfigured means unchanged, not guessed"
+  default WP-04-01's duplicate-window fallback established, rather than
+  assuming a cutoff time that was never set.
+
 ## Not Yet Implemented
 
-Classifying arrival/departure with "first of the day" deduplication,
-resolving `both`-direction devices, and late detection (WP-04-03),
-computing daily absence (WP-04-04), corrections (WP-04-05), and the
+Computing daily absence (WP-04-04), corrections (WP-04-05), and the
 guardian-facing sync contract for attendance (WP-04-06) are all later
 phase-04 work packages — none of them exist yet. This document will grow
 as they land.
