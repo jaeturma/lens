@@ -12,6 +12,7 @@ Read in this order:
 6. `SECURITY.md`
 7. `ATTENDANCE.md`
 8. `ANNOUNCEMENTS.md`
-9. `EXECUTION-ORDER.md`
+9. `NOTIFICATIONS.md`
+10. `EXECUTION-ORDER.md`
 
 Work packages are stored under `docs/work-packages/phase-XX/`.

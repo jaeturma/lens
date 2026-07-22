@@ -85,4 +85,12 @@ class Guardian extends Model
     {
         return $this->links()->where('status', GuardianStudentLinkStatus::Active);
     }
+
+    /**
+     * @return HasMany<GuardianNotification, $this>
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(GuardianNotification::class);
+    }
 }
