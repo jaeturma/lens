@@ -87,6 +87,11 @@ class ProcessRfidScan
      * their own AttendanceEvent for the audit trail, they just don't change
      * the summary. A departure always takes the most recent exit-type event
      * of the day, matching WP-04-02's original behavior.
+     *
+     * Recording an arrival also clears a same-day `is_absent` mark (WP-04-04
+     * may have already run for the day before this — genuinely late but
+     * present — arrival came in): the student is present, so the earlier
+     * absence mark must not stand.
      */
     private function updateDailySummary(AttendanceEvent $event, ?AttendanceDailySummary $summary, string $date): void
     {
@@ -99,13 +104,19 @@ class ProcessRfidScan
             AttendanceEventType::Departure => 'departure_event_id',
         };
 
+        $attributes = [$column => $event->id];
+
+        if ($event->event_type === AttendanceEventType::Arrival) {
+            $attributes['is_absent'] = false;
+        }
+
         if ($summary) {
-            $summary->update([$column => $event->id]);
+            $summary->update($attributes);
         } else {
             AttendanceDailySummary::create([
                 'student_id' => $event->student_id,
                 'date' => $date,
-                $column => $event->id,
+                ...$attributes,
             ]);
         }
     }

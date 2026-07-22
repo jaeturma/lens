@@ -116,9 +116,43 @@ instead of leaving `both`-direction scans unprocessed:
   default WP-04-01's duplicate-window fallback established, rather than
   assuming a cutoff time that was never set.
 
+## Absence Calculation (WP-04-04)
+
+`App\Actions\Attendance\MarkDailyAbsences` marks every active student with
+no arrival today as absent, once the school's configured
+`absence_cutoff_time` has passed. It's driven by the
+`attendance:mark-absences` console command, scheduled to run every 15
+minutes (`routes/console.php`) — because the cutoff is a configurable
+time-of-day, not a fixed schedule slot, the command runs frequently and the
+action itself decides whether "now" is past today's cutoff, making it safe
+to run repeatedly.
+
+- **Never marks before cutoff.** If `now()` (in the school's timezone) is
+  earlier than `AttendanceRule::absenceCutoffFor(today)`, or today isn't an
+  operating day, or no `School`/`SchoolSettings`/`AttendanceRule` is
+  configured yet, the action does nothing and returns `0`.
+- **Present learners are excluded.** A student with an `arrival_event_id`
+  on today's `AttendanceDailySummary` is never touched — absence is
+  computed purely from "no arrival yet," matching `absence_cutoff_time`'s
+  definition in WP-04-01.
+- **Marking is on `attendance_daily_summaries.is_absent`** (new boolean
+  column), not a third `AttendanceEventType` — there's no `RfidScan` behind
+  an absence for `AttendanceEvent.rfid_scan_id` to reference, so it can't
+  be an event the way arrival/departure/late are.
+- **A later arrival un-marks absence.** If a student taps in after the
+  absence job already ran for the day (late but present), `ProcessRfidScan`
+  now clears `is_absent` back to `false` whenever it records an arrival —
+  otherwise a genuinely present, late-arriving student would be left
+  showing as both absent and arrived.
+- **Idempotent**, matching every other write path here: re-running the
+  action the same day only touches students not already marked, using the
+  same `whereDate()`-based lookup (not an array-matched `updateOrCreate()`)
+  WP-04-02 established is required against a `date`-cast column.
+- Only `StudentStatus::Active` students are considered — inactive
+  (transferred-out/withdrawn) students never accumulate absence records.
+
 ## Not Yet Implemented
 
-Computing daily absence (WP-04-04), corrections (WP-04-05), and the
-guardian-facing sync contract for attendance (WP-04-06) are all later
-phase-04 work packages — none of them exist yet. This document will grow
-as they land.
+Corrections (WP-04-05) and the guardian-facing sync contract for
+attendance (WP-04-06) are the remaining phase-04 work packages — neither
+exists yet. This document will grow as they land.

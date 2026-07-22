@@ -23,6 +23,7 @@ class AttendanceDailySummaryFactory extends Factory
             'date' => now()->toDateString(),
             'arrival_event_id' => null,
             'departure_event_id' => null,
+            'is_absent' => false,
         ];
     }
 }

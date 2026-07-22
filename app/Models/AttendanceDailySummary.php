@@ -17,13 +17,14 @@ use Illuminate\Support\Carbon;
  * @property Carbon $date
  * @property int|null $arrival_event_id
  * @property int|null $departure_event_id
+ * @property bool $is_absent
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Student $student
  * @property-read AttendanceEvent|null $arrivalEvent
  * @property-read AttendanceEvent|null $departureEvent
  */
-#[Fillable(['student_id', 'date', 'arrival_event_id', 'departure_event_id'])]
+#[Fillable(['student_id', 'date', 'arrival_event_id', 'departure_event_id', 'is_absent'])]
 #[ObservedBy(AttendanceDailySummaryObserver::class)]
 class AttendanceDailySummary extends Model
 {
@@ -37,6 +38,7 @@ class AttendanceDailySummary extends Model
     {
         return [
             'date' => 'date',
+            'is_absent' => 'boolean',
         ];
     }
 

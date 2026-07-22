@@ -195,6 +195,23 @@ test('an arrival is never flagged late when no attendance rule is configured', f
     expect($event->is_late)->toBeFalse();
 });
 
+test('an arrival clears a same-day absence mark from an earlier absence run', function () {
+    $device = RfidDevice::factory()->create(['direction_mode' => RfidDeviceDirectionMode::Entry]);
+    $student = Student::factory()->create();
+
+    AttendanceDailySummary::factory()->for($student)->create([
+        'date' => now()->toDateString(),
+        'is_absent' => true,
+    ]);
+
+    $scan = validScanFor($device, $student);
+    $event = (new ProcessRfidScan)($scan);
+
+    $summary = AttendanceDailySummary::query()->where('student_id', $student->id)->firstOrFail();
+    expect($summary->is_absent)->toBeFalse();
+    expect($summary->arrival_event_id)->toBe($event->id);
+});
+
 test('a departure event is never flagged late', function () {
     $school = School::factory()->create();
     SchoolSettings::factory()->for($school)->create(['timezone' => 'UTC']);
