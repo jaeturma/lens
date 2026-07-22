@@ -50,6 +50,11 @@ class HomePage extends ConsumerWidget {
             : null,
         actions: [
           IconButton(
+            icon: const Icon(Icons.campaign_outlined),
+            tooltip: 'Announcements',
+            onPressed: () => context.push(AppRoutes.announcements),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Log Out',
             onPressed: () =>

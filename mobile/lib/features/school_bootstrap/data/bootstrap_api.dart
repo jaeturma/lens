@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../school_setup/data/resolved_school.dart';
+import 'resolved_announcement.dart';
 import 'resolved_child.dart';
 import 'resolved_guardian.dart';
 
@@ -16,12 +17,14 @@ class BootstrapResult {
     required this.school,
     required this.guardian,
     required this.children,
+    required this.announcements,
     required this.nextCursor,
   });
 
   final ResolvedSchool school;
   final ResolvedGuardian? guardian;
   final List<ResolvedChild> children;
+  final List<ResolvedAnnouncement> announcements;
 
   /// The change-feed position as of this bootstrap call
   /// (`docs/api/SYNC.md`) — the incremental sync engine's (WP-07-08)
@@ -32,9 +35,8 @@ class BootstrapResult {
 
 /// `GET /sync/bootstrap` (`docs/api/SYNC.md`) — authenticated, so this is
 /// only ever called once a guardian session exists (WP-07-06, right after
-/// login). This package's own scope is the `school`, `guardian`,
-/// `children`, and `next_cursor` fields of that response; `announcements`
-/// belongs to whichever later work package consumes it (WP-07-11).
+/// login). Parses every field of that response: `school`, `guardian`,
+/// `children`, `announcements`, and `next_cursor`.
 class BootstrapApi {
   BootstrapApi(this._dio);
 
@@ -56,11 +58,16 @@ class BootstrapApi {
           .cast<Map<String, dynamic>>()
           .map(ResolvedChild.fromJson)
           .toList();
+      final announcements = (data['announcements'] as List)
+          .cast<Map<String, dynamic>>()
+          .map(ResolvedAnnouncement.fromJson)
+          .toList();
 
       return BootstrapResult(
         school: school,
         guardian: guardian,
         children: children,
+        announcements: announcements,
         nextCursor: data['next_cursor'] as String,
       );
     } on DioException catch (exception) {

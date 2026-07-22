@@ -216,7 +216,18 @@ class AnnouncementsDao extends DatabaseAccessor<AppDatabase>
     with _$AnnouncementsDaoMixin {
   AnnouncementsDao(super.db);
 
-  Stream<List<Announcement>> watchAll() => select(announcements).watch();
+  /// Most recently published first (WP-07-11).
+  Stream<List<Announcement>> watchAll() {
+    return (select(
+      announcements,
+    )..orderBy([(row) => OrderingTerm.desc(row.publishedAt)])).watch();
+  }
+
+  Stream<Announcement?> watchByUuid(String uuid) {
+    return (select(
+      announcements,
+    )..where((row) => row.uuid.equals(uuid))).watchSingleOrNull();
+  }
 
   Future<void> upsert(AnnouncementsCompanion entry) {
     return into(announcements).insertOnConflictUpdate(entry);

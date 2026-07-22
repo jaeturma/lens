@@ -1,4 +1,5 @@
 import '../../../core/database/app_database.dart';
+import '../../../core/date_format.dart';
 
 /// Shared with [LinkedChildCard] (`features/home/`) — one phrasing for an
 /// attendance row wherever it's shown, today's status or history alike.
@@ -37,23 +38,4 @@ String formatTimeOfDay(DateTime utcTime) {
   return '$hour12:$minute $period';
 }
 
-const _monthNames = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-/// `date` is stored as a UTC-normalized calendar date (`tables.dart`) — no
-/// `.toLocal()` here, that would risk shifting it onto the wrong day.
-String formatAttendanceDate(DateTime date) {
-  return '${_monthNames[date.month - 1]} ${date.day}, ${date.year}';
-}
+String formatAttendanceDate(DateTime date) => formatCalendarDate(date);

@@ -64,6 +64,7 @@ class _FakeBootstrapApi extends BootstrapApi {
       school: _resolvedSchool,
       guardian: _resolvedGuardian,
       children: [],
+      announcements: [],
       nextCursor: 'cursor-1',
     );
   }

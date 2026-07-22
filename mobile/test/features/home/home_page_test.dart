@@ -182,4 +182,30 @@ void main() {
 
     await disposeAppUnderTest(tester);
   });
+
+  testWidgets('the announcements action opens the announcements screen', (
+    tester,
+  ) async {
+    final database = await _seedBoundSchool();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          appVersionProvider.overrideWith((ref) async => '0.1.0'),
+          sessionControllerProvider.overrideWith(FakeAuthenticatedSession.new),
+          syncApiProvider.overrideWithValue(NoOpSyncApi()),
+        ],
+        child: const LensApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Announcements'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No announcements yet.'), findsOneWidget);
+
+    await disposeAppUnderTest(tester);
+  });
 }

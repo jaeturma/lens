@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/database/app_database.dart';
 import 'package:mobile/features/school_bootstrap/data/bootstrap_api.dart';
 import 'package:mobile/features/school_bootstrap/data/bootstrap_repository.dart';
+import 'package:mobile/features/school_bootstrap/data/resolved_announcement.dart';
 import 'package:mobile/features/school_bootstrap/data/resolved_child.dart';
 import 'package:mobile/features/school_bootstrap/data/resolved_guardian.dart';
 import 'package:mobile/features/school_setup/data/resolved_school.dart';
@@ -52,6 +53,15 @@ const _resolvedChild = ResolvedChild(
   ),
 );
 
+const _resolvedAnnouncement = ResolvedAnnouncement(
+  uuid: 'announcement-uuid',
+  title: 'Foundation Day',
+  body: 'School closed for Foundation Day celebrations.',
+  status: 'published',
+  publishedAt: null,
+  expiresAt: null,
+);
+
 class _FakeBootstrapApi extends BootstrapApi {
   _FakeBootstrapApi(this.result) : super(Dio());
 
@@ -74,6 +84,7 @@ void main() {
             school: _resolvedSchool,
             guardian: null,
             children: [],
+            announcements: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -103,6 +114,7 @@ void main() {
             school: _resolvedSchool,
             guardian: null,
             children: [],
+            announcements: [],
             nextCursor: 'cursor-from-bootstrap',
           ),
         ),
@@ -127,6 +139,7 @@ void main() {
             school: _resolvedSchool,
             guardian: null,
             children: [],
+            announcements: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -150,6 +163,7 @@ void main() {
             ),
             guardian: null,
             children: [],
+            announcements: [],
             nextCursor: 'cursor-2',
           ),
         ),
@@ -175,6 +189,7 @@ void main() {
           school: _resolvedSchool,
           guardian: _resolvedGuardian,
           children: [],
+          announcements: [],
           nextCursor: 'cursor-1',
         ),
       ),
@@ -201,6 +216,7 @@ void main() {
             school: _resolvedSchool,
             guardian: null,
             children: [],
+            announcements: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -226,6 +242,7 @@ void main() {
             school: _resolvedSchool,
             guardian: null,
             children: [_resolvedChild],
+            announcements: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -284,6 +301,7 @@ void main() {
             school: _resolvedSchool,
             guardian: null,
             children: [childWithoutAttendance],
+            announcements: [],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -294,6 +312,81 @@ void main() {
 
       expect(await database.select(database.students).get(), hasLength(1));
       expect(await database.select(database.attendanceRecords).get(), isEmpty);
+    },
+  );
+
+  test(
+    'a currently-published announcement from bootstrap is cached locally (WP-07-11)',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final repository = BootstrapRepository(
+        _FakeBootstrapApi(
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            children: [],
+            announcements: [_resolvedAnnouncement],
+            nextCursor: 'cursor-1',
+          ),
+        ),
+        database,
+      );
+
+      await repository.sync();
+
+      final row = await database.select(database.announcements).getSingle();
+      expect(row.uuid, 'announcement-uuid');
+      expect(row.title, 'Foundation Day');
+      expect(row.status, 'published');
+    },
+  );
+
+  test(
+    'a repeated sync updates the cached announcement rather than duplicating it',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await BootstrapRepository(
+        _FakeBootstrapApi(
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            children: [],
+            announcements: [_resolvedAnnouncement],
+            nextCursor: 'cursor-1',
+          ),
+        ),
+        database,
+      ).sync();
+
+      await BootstrapRepository(
+        _FakeBootstrapApi(
+          const BootstrapResult(
+            school: _resolvedSchool,
+            guardian: null,
+            children: [],
+            announcements: [
+              ResolvedAnnouncement(
+                uuid: 'announcement-uuid',
+                title: 'Foundation Day (Updated)',
+                body: 'School closed for Foundation Day celebrations.',
+                status: 'published',
+                publishedAt: null,
+                expiresAt: null,
+              ),
+            ],
+            nextCursor: 'cursor-2',
+          ),
+        ),
+        database,
+      ).sync();
+
+      final rows = await database.select(database.announcements).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.title, 'Foundation Day (Updated)');
     },
   );
 }

@@ -15,26 +15,27 @@ final bootstrapRepositoryProvider = Provider<BootstrapRepository>((ref) {
 
 /// "Download and store mobile school configuration and branding"
 /// (WP-07-05), extended by WP-07-06 for "guardian profile is stored
-/// locally" and by WP-07-09 for the guardian's linked children: fetches
-/// the bootstrap response and writes its `school`, `guardian`, and
-/// `children` portions into `school_profile`/`guardian_profile`/
-/// `students`+`guardian_student_links` (+`attendance_records`, for each
-/// child's `today_attendance` snapshot). Screens read the cached result
-/// reactively via each DAO's `watch()` — this class only ever writes, it
-/// is never read from directly.
+/// locally", by WP-07-09 for the guardian's linked children, and by
+/// WP-07-11 for currently-published announcements: fetches the bootstrap
+/// response and writes `school`, `guardian`, `children` (+ each child's
+/// `today_attendance` snapshot), and `announcements` into their matching
+/// local tables. Screens read the cached result reactively via each
+/// DAO's `watch()` — this class only ever writes, it is never read from
+/// directly.
 ///
-/// This is the *only* place a guardian's linked children ever enter local
-/// storage for the first time: the incremental sync engine (WP-07-08)
-/// only walks the feed forward from this call's own `next_cursor`, so it
-/// can never backfill a child (or their attendance) that already existed
-/// before this login.
+/// This is the *only* place a guardian's linked children or currently-
+/// published announcements ever enter local storage for the first time:
+/// the incremental sync engine (WP-07-08) only walks the feed forward
+/// from this call's own `next_cursor`, so it can never backfill anything
+/// that already existed before this login.
 ///
-/// Known limitation: if a link was revoked entirely while this guardian
-/// was signed out (not via this app's own logout, which already clears
-/// everything — WP-07-07), a stale local child can persist until an
-/// eventual `guardian_student_link` `revoked` entry is walked, since this
-/// method only ever adds/updates children present in the response, it
-/// does not reconcile ones no longer present.
+/// Known limitation: if a link was revoked, or an announcement withdrawn/
+/// expired, entirely while this guardian was signed out (not via this
+/// app's own logout, which already clears everything — WP-07-07), the
+/// stale local row can persist until an eventual `revoked`/`expired`
+/// entry is walked, since this method only ever adds/updates what the
+/// response currently contains — it does not reconcile rows no longer
+/// present.
 class BootstrapRepository {
   BootstrapRepository(this._api, this._database);
 
@@ -69,6 +70,10 @@ class BootstrapRepository {
           ),
         );
       }
+    }
+
+    for (final announcement in result.announcements) {
+      await _database.announcementsDao.upsert(announcement.toCompanion());
     }
 
     // The incremental sync engine's (WP-07-08) starting point — without
